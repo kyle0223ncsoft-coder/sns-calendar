@@ -6,6 +6,7 @@
 <title>글로벌 SNS 캘린더</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231a1a18'/><rect x='6' y='10' width='20' height='16' rx='2' fill='white'/><rect x='6' y='10' width='20' height='6' rx='2' fill='%23378ADD'/><rect x='10' y='6' width='3' height='6' rx='1.5' fill='%231a1a18'/><rect x='19' y='6' width='3' height='6' rx='1.5' fill='%231a1a18'/><rect x='9' y='20' width='3' height='3' rx='0.5' fill='%23378ADD'/><rect x='14' y='20' width='3' height='3' rx='0.5' fill='%23378ADD'/><rect x='19' y='20' width='3' height='3' rx='0.5' fill='%23639922'/></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
@@ -109,7 +110,26 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
 .btn-del{background:#FEE2E2;color:#991B1B;border-color:#FECACA;margin-right:auto}
 .btn-cancel:hover,.btn-save:hover,.btn-del:hover{opacity:.75}
 
-/* highlight color picker */
+/* detail tabs */
+.detail-tab{padding:8px 16px;font-size:13px;font-weight:500;font-family:inherit;background:none;border:none;border-bottom:2px solid transparent;color:var(--text-3);cursor:pointer;transition:all .15s}
+.detail-tab.active{color:var(--text);border-bottom-color:var(--text)}
+.detail-tab:hover{color:var(--text-2)}
+
+/* X preview card */
+.x-card{border:1px solid #cfd9de;border-radius:12px;padding:14px;background:#fff;font-family:'Noto Sans KR','Noto Sans JP','Noto Sans',sans-serif}
+.x-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;position:relative}
+.x-avatar{width:40px;height:40px;border-radius:50%;background:#1a1a18;color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;font-family:'Noto Sans KR',sans-serif}
+.x-name{font-size:14px;font-weight:700;color:#0f1419;font-family:'Noto Sans KR',sans-serif}
+.x-handle{font-size:13px;color:#536471}
+.x-logo{width:18px;height:18px;margin-left:auto;color:#0f1419}
+.x-body{font-size:14px;color:#0f1419;line-height:1.7;margin-bottom:10px;white-space:pre-wrap;word-break:break-word;font-family:'Noto Sans KR','Noto Sans JP','Noto Sans',sans-serif}
+.x-hashtags{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
+.x-hashtags span{font-size:14px;color:#1d9bf0;font-weight:400;font-family:'Noto Sans KR',sans-serif}
+.x-image-area{border-radius:10px;overflow:hidden;margin-bottom:10px}
+.x-image-placeholder{background:#f7f9f9;border:1.5px dashed #cfd9de;border-radius:10px;height:130px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#536471;font-size:12px}
+.x-meta{font-size:12px;color:#536471;margin-bottom:8px;font-family:'Noto Sans',sans-serif}
+.x-actions{display:flex;justify-content:space-between;font-size:13px;color:#536471;padding-top:10px;border-top:1px solid #eff3f4}
+.x-action-btn{display:flex;align-items:center;gap:4px;cursor:default}
 .hl-color-opt { display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;color:var(--text-2);padding:5px 10px;border-radius:20px;border:1.5px solid var(--border);background:var(--c);transition:border-color .15s }
 .hl-color-opt input { display:none }
 .hl-color-opt:has(input:checked) { border-color:var(--b);font-weight:600 }
@@ -257,8 +277,17 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
         </div>
       </div>
       <div class="form-row">
-        <label class="form-label">메모</label>
-        <textarea class="form-textarea" id="f-note" placeholder="추가 설명, 담당자, 링크 등"></textarea>
+        <label class="form-label">투고문</label>
+        <textarea class="form-textarea" id="f-note" placeholder="게시글 본문을 입력하세요&#10;&#10;#해시태그1 #해시태그2" style="min-height:100px"></textarea>
+      </div>
+      <div class="form-row">
+        <label class="form-label">담당자</label>
+        <input class="form-input" id="f-assignee" placeholder="예: 홍길동, 이시현"/>
+      </div>
+      <div class="form-row">
+        <label class="form-label">이미지 / 영상 URL</label>
+        <input class="form-input" id="f-media-url" placeholder="구글 드라이브, YouTube URL 붙여넣기"/>
+        <div id="f-media-preview" style="margin-top:6px;display:none;border-radius:8px;overflow:hidden;position:relative"></div>
       </div>
     </div>
 
@@ -301,24 +330,80 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
 
 <!-- Detail Modal -->
 <div class="modal-bg" id="detail-modal">
-  <div class="modal" style="max-width:380px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+  <div class="modal" style="max-width:420px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
       <div id="detail-badge" style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;border:1.5px solid"></div>
       <button onclick="closeDetail()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-3);line-height:1">×</button>
     </div>
     <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:14px" id="detail-name"></div>
-    <div class="detail-row">
-      <div class="detail-label">기간</div>
-      <div class="detail-val" id="detail-date"></div>
+
+    <!-- 탭 -->
+    <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:14px">
+      <button class="detail-tab active" id="tab-info" onclick="switchDetailTab('info')">소재 정보</button>
+      <button class="detail-tab" id="tab-preview" onclick="switchDetailTab('preview')">X 미리보기</button>
     </div>
-    <div class="detail-row" id="detail-plat-row">
-      <div class="detail-label">플랫폼</div>
-      <div class="detail-val"><div class="detail-plat-icons" id="detail-plat"></div></div>
+
+    <!-- 소재 정보 탭 -->
+    <div id="detail-panel-info">
+      <div class="detail-row">
+        <div class="detail-label">기간</div>
+        <div class="detail-val" id="detail-date"></div>
+      </div>
+      <div class="detail-row" id="detail-plat-row">
+        <div class="detail-label">플랫폼</div>
+        <div class="detail-val"><div class="detail-plat-icons" id="detail-plat"></div></div>
+      </div>
+      <div class="detail-row" id="detail-note-row">
+        <div class="detail-label">투고문</div>
+        <div class="detail-val" id="detail-note" style="white-space:pre-wrap;line-height:1.6"></div>
+      </div>
+      <div class="detail-row" id="detail-assignee-row">
+        <div class="detail-label">담당자</div>
+        <div class="detail-val" id="detail-assignee"></div>
+      </div>
     </div>
-    <div class="detail-row" id="detail-note-row">
-      <div class="detail-label">메모</div>
-      <div class="detail-val" id="detail-note"></div>
+
+    <!-- X 미리보기 탭 -->
+    <div id="detail-panel-preview" style="display:none">
+      <div class="x-card">
+        <div class="x-header">
+          <div class="x-avatar" id="x-avatar">G</div>
+          <div>
+            <div class="x-name" id="x-name"></div>
+            <div class="x-handle" id="x-handle">@account</div>
+          </div>
+          <svg class="x-logo" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.737-8.835L1.254 2.25H8.08l4.253 5.622 5.91-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        </div>
+        <div class="x-body" id="x-body"></div>
+        <div class="x-hashtags" id="x-hashtags"></div>
+        <div class="x-image-area">
+          <div class="x-image-placeholder">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#536471" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+            <span>이미지 / 영상 첨부 영역</span>
+          </div>
+        </div>
+        <div class="x-meta" id="x-meta"></div>
+        <div class="x-actions">
+          <div class="x-action-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <div class="x-action-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          </div>
+          <div class="x-action-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          </div>
+          <div class="x-action-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          </div>
+          <div class="x-action-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--text-3);margin-top:8px;text-align:center">투고문은 소재 메모란에 입력하세요</div>
     </div>
+
     <div class="detail-actions">
       <button class="btn-detail-del" onclick="deleteFromDetail()">삭제</button>
       <button class="btn-detail-copy" onclick="copyEvent()">복사해서 추가</button>
@@ -701,6 +786,9 @@ function openAdd(ds){
   document.getElementById('f-start').value=ds||today.toISOString().slice(0,10);
   document.getElementById('f-end').value=ds||today.toISOString().slice(0,10);
   document.getElementById('f-note').value='';
+  document.getElementById('f-assignee').value='';
+  document.getElementById('f-media-url').value='';
+  renderMediaPreview('', 'f-media-preview');
   document.getElementById('f-highlight').checked=false;
   document.getElementById('f-hl-name').value='';
   document.getElementById('f-hl-start').value=ds||today.toISOString().slice(0,10);
@@ -733,6 +821,9 @@ function openEdit(id){
     document.getElementById('f-start').value=ev.start_date;
     document.getElementById('f-end').value=ev.end_date;
     document.getElementById('f-note').value=ev.note||'';
+    document.getElementById('f-assignee').value=ev.assignee||'';
+    document.getElementById('f-media-url').value=ev.media_url||'';
+    renderMediaPreview(ev.media_url||'', 'f-media-preview');
     setSelectedPlats(ev.platform||'');
   }
   document.getElementById('btn-del').style.display='block';
@@ -755,7 +846,7 @@ async function saveEvent(){
     if(!name){showToast('소재명을 입력해주세요');return;}
     const start=document.getElementById('f-start').value;
     const end=document.getElementById('f-end').value;
-    payload={name,region:document.getElementById('f-region').value,platform:getSelectedPlats().join(','),start_date:start,end_date:end<start?start:end,note:document.getElementById('f-note').value.trim(),is_highlight:false};
+    payload={name,region:document.getElementById('f-region').value,platform:getSelectedPlats().join(','),start_date:start,end_date:end<start?start:end,note:document.getElementById('f-note').value.trim(),assignee:document.getElementById('f-assignee').value.trim(),media_url:document.getElementById('f-media-url').value.trim(),is_highlight:false};
   }
   let error;
   if(editId){ ({error}=await sb.from('events').update(payload).eq('id',editId)); }
@@ -769,6 +860,57 @@ async function deleteEvent(){
   const {error}=await sb.from('events').delete().eq('id',editId);
   if(error){showToast('삭제 실패');return;}
   showToast('삭제됐어요'); closeModal(); await loadEvents();
+}
+
+// URL 타입 감지 및 변환
+function resolveMediaUrl(url) {
+  if (!url) return null;
+  url = url.trim();
+
+  // 구글 드라이브: /file/d/{ID}/view 또는 /file/d/{ID}/edit
+  const driveFileMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+  if (driveFileMatch) {
+    return { type: 'image', url: `https://drive.google.com/uc?export=view&id=${driveFileMatch[1]}` };
+  }
+  // 구글 드라이브: open?id=
+  const driveOpenMatch = url.match(/drive\.google\.com\/open\?id=([^&]+)/);
+  if (driveOpenMatch) {
+    return { type: 'image', url: `https://drive.google.com/uc?export=view&id=${driveOpenMatch[1]}` };
+  }
+  // 구글 드라이브: uc?id=
+  if (url.includes('drive.google.com/uc')) {
+    return { type: 'image', url };
+  }
+  // YouTube
+  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?]+)/);
+  if (ytMatch) {
+    return { type: 'youtube', id: ytMatch[1], thumb: `https://img.youtube.com/vi/${ytMatch[1]}/maxresdefault.jpg` };
+  }
+  // 일반 이미지 URL
+  if (url.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || url.startsWith('http')) {
+    return { type: 'image', url };
+  }
+  return null;
+}
+
+function renderMediaPreview(url, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const media = resolveMediaUrl(url);
+  if (!media) { container.style.display = 'none'; container.innerHTML = ''; return; }
+  if (media.type === 'image') {
+    container.innerHTML = `<img src="${media.url}" style="width:100%;border-radius:8px;display:block" onerror="this.parentElement.innerHTML='<div style=\\'padding:10px;font-size:12px;color:#DC2626\\'>이미지를 불러올 수 없어요. URL을 확인해주세요.</div>'"/>`;
+  } else if (media.type === 'youtube') {
+    container.innerHTML = `<div style="position:relative"><img src="${media.thumb}" style="width:100%;border-radius:8px;display:block" onerror="this.src='https://img.youtube.com/vi/${media.id}/hqdefault.jpg'"/><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:44px;height:44px;background:rgba(0,0,0,0.7);border-radius:50%;display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg></div></div>`;
+  }
+  container.style.display = 'block';
+}
+
+function switchDetailTab(tab){
+  document.getElementById('detail-panel-info').style.display = tab==='info'?'block':'none';
+  document.getElementById('detail-panel-preview').style.display = tab==='preview'?'block':'none';
+  document.getElementById('tab-info').classList.toggle('active', tab==='info');
+  document.getElementById('tab-preview').classList.toggle('active', tab==='preview');
 }
 
 function openDetail(id){
@@ -788,6 +930,40 @@ function openDetail(id){
   const noteRow=document.getElementById('detail-note-row');
   if(ev.note){ document.getElementById('detail-note').textContent=ev.note; noteRow.style.display='flex'; }
   else noteRow.style.display='none';
+  const assigneeRow=document.getElementById('detail-assignee-row');
+  if(ev.assignee){ document.getElementById('detail-assignee').textContent=ev.assignee; assigneeRow.style.display='flex'; }
+  else assigneeRow.style.display='none';
+
+  // X 미리보기 채우기
+  const note = ev.note || '';
+  const lines = note.split('\n');
+  const hashtagLine = lines.filter(l=>l.trim().startsWith('#')).join(' ');
+  const bodyLines = lines.filter(l=>!l.trim().startsWith('#'));
+  const bodyText = bodyLines.join('\n').trim();
+  const hashtags = hashtagLine.match(/#\S+/g) || [];
+
+  document.getElementById('x-name').textContent = ev.name;
+  document.getElementById('x-body').textContent = bodyText || '(투고문을 소재 수정에서 입력하세요)';
+  document.getElementById('x-body').style.color = bodyText ? '#0f1419' : '#536471';
+  const htEl = document.getElementById('x-hashtags');
+  htEl.innerHTML = hashtags.map(h=>`<span>${h}</span>`).join('');
+  htEl.style.display = hashtags.length ? 'flex' : 'none';
+
+  // 미디어 영역
+  const xImageArea = document.getElementById('x-image-area');
+  const media = resolveMediaUrl(ev.media_url||'');
+  if (media && media.type === 'image') {
+    xImageArea.innerHTML = `<img src="${media.url}" style="width:100%;border-radius:10px;display:block;margin-bottom:10px" onerror="this.parentElement.innerHTML='<div class=\\'x-image-placeholder\\'>이미지를 불러올 수 없어요</div>'"/>`;
+  } else if (media && media.type === 'youtube') {
+    xImageArea.innerHTML = `<div style="position:relative;margin-bottom:10px"><img src="${media.thumb}" style="width:100%;border-radius:10px;display:block" onerror="this.src='https://img.youtube.com/vi/${media.id}/hqdefault.jpg'"/><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:44px;height:44px;background:rgba(0,0,0,0.7);border-radius:50%;display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg></div></div>`;
+  } else {
+    xImageArea.innerHTML = `<div class="x-image-placeholder"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#536471" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg><span>이미지 / 영상 첨부 영역</span></div>`;
+  }
+
+  document.getElementById('x-meta').textContent = ev.start_date + (ev.start_date !== ev.end_date ? ` ~ ${ev.end_date}` : '') + ' · X';
+
+  // 탭 초기화
+  switchDetailTab('info');
   document.getElementById('detail-modal').classList.add('open');
 }
 function closeDetail(){ document.getElementById('detail-modal').classList.remove('open'); }
@@ -819,6 +995,14 @@ function closeHelp(){ document.getElementById('help-modal').classList.remove('op
 function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
 
 sb.channel('events-changes').on('postgres_changes',{event:'*',schema:'public',table:'events'},()=>loadEvents()).subscribe();
+
+// 이미지/영상 URL 실시간 미리보기 (이벤트 위임)
+document.addEventListener('input', function(e){
+  if(e.target.id === 'f-media-url'){
+    renderMediaPreview(e.target.value, 'f-media-preview');
+  }
+});
+
 loadEvents();
 </script>
 </body>
