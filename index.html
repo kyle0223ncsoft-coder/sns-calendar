@@ -876,7 +876,6 @@ function copyEvent() {
   document.getElementById('modal-title').textContent = '소재 추가';
   document.getElementById('f-name').value = '';
   document.getElementById('f-region').value = 'game';
-  document.getElementById('f-platform').value = '';
   document.getElementById('f-start').value = ds || today.toISOString().slice(0,10);
   document.getElementById('f-end').value = ds || today.toISOString().slice(0,10);
   document.getElementById('f-note').value = '';
@@ -891,7 +890,6 @@ function openEdit(id) {
   document.getElementById('modal-title').textContent = '소재 수정';
   document.getElementById('f-name').value = ev.name;
   document.getElementById('f-region').value = ev.region;
-  document.getElementById('f-platform').value = ev.platform || '';
   document.getElementById('f-start').value = ev.start_date;
   document.getElementById('f-end').value = ev.end_date;
   document.getElementById('f-note').value = ev.note || '';
