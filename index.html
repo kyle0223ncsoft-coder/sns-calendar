@@ -581,30 +581,36 @@ function render(){
     if(!cells.length||!dowEl) return;
     const dowH=dowEl.getBoundingClientRect().height;
     const BASE_H=160;
-    const BAR_H=24, BAR_GAP=3, TOP_PAD=36;
+    const BAR_H=24, BAR_GAP=3, TOP_PAD=32;
 
     // 각 주의 최대 슬롯 수를 계산해서 셀 높이 조정
     const rowHeights = [];
     for(let w=0;w<weeks;w++){
       const maxSlot = weekSlots[w].length;
-      const needed = TOP_PAD + maxSlot*(BAR_H+BAR_GAP) + 12;
+      const needed = TOP_PAD + maxSlot*(BAR_H+BAR_GAP) + 10;
       rowHeights[w] = Math.max(BASE_H, needed);
     }
 
     // 셀 높이 적용
     for(let i=0;i<total;i++){
       const w=Math.floor(i/7);
+      cells[i].style.height = rowHeights[w]+'px';
       cells[i].style.minHeight = rowHeights[w]+'px';
     }
 
     // 높이 적용 후 실제 크기 측정
     const cellRect=cells[0].getBoundingClientRect();
     const cellW=cellRect.width;
-    const cellH=cellRect.height;
+
+    // 각 주 rowTop을 실제 셀 위치로 계산
+    const rowTops = [];
+    for(let w=0;w<weeks;w++){
+      rowTops[w] = cells[w*7].getBoundingClientRect().top - cal.getBoundingClientRect().top;
+    }
 
     for(let w=0;w<weeks;w++){
       const slots=weekSlots[w];
-      const rowTop=dowH+w*cellH;
+      const rowTop=rowTops[w];
       slots.forEach((slotData,slot)=>{
         let di=0;
         while(di<7){
