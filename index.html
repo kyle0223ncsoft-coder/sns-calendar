@@ -59,8 +59,7 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
 .sum-chip.en{background:var(--en-bg);color:var(--en-c)}
 
 /* grid */
-.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-radius:var(--r);border:1px solid var(--border);overflow:hidden;position:relative}
-.dow{background:var(--surface);padding:8px 10px;font-size:11px;font-weight:600;color:var(--text-3);text-align:center;letter-spacing:.5px;text-transform:uppercase;border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-radius:var(--r);border:1px solid var(--border);overflow:hidden;position:relative}.dow{background:var(--surface);padding:8px 10px;font-size:11px;font-weight:600;color:var(--text-3);text-align:center;letter-spacing:.5px;text-transform:uppercase;border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
 .dow:last-child{border-right:none}
 .dow.sun{color:#DC2626}
 .dow.sat{color:#2563EB}
@@ -581,7 +580,6 @@ function render(){
     const dowEl=cal.querySelector('.dow');
     if(!cells.length||!dowEl) return;
     const dowH=dowEl.getBoundingClientRect().height;
-    const cellW=cells[0].getBoundingClientRect().width;
     const BASE_H=160;
     const BAR_H=24, BAR_GAP=3, TOP_PAD=36;
 
@@ -599,8 +597,10 @@ function render(){
       cells[i].style.minHeight = rowHeights[w]+'px';
     }
 
-    // 실제 셀 높이 재계산 후 바 그리기
-    const cellH=cells[0].getBoundingClientRect().height;
+    // 높이 적용 후 실제 크기 측정
+    const cellRect=cells[0].getBoundingClientRect();
+    const cellW=cellRect.width;
+    const cellH=cellRect.height;
 
     for(let w=0;w<weeks;w++){
       const slots=weekSlots[w];
@@ -635,9 +635,9 @@ function render(){
             const bar=document.createElement('div');
             bar.className=`ev-bar ${ev.region}`;
             bar.style.cssText=`
-              left:${seg.start*cellW+3}px;
+              left:${seg.start*cellW+4}px;
               top:${rowTop+TOP_PAD+slot*(BAR_H+BAR_GAP)}px;
-              width:${segSpan*cellW-6}px;
+              width:${segSpan*cellW-8}px;
               border-radius:${roundL} ${roundR} ${roundR} ${roundL};
               opacity:${seg.isOther?'0.3':'1'};
             `;
