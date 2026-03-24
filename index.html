@@ -511,35 +511,55 @@ function render(){
           if(!ev){di=end+1;continue;}
           const isTrueStart=ev.start_date===dates[w*7+di].ds;
           const isTrueEnd=ev.end_date===dates[w*7+end].ds;
-          const spanDays=end-di+1;
-          const bar=document.createElement('div');
-          bar.className=`ev-bar ${ev.region}`;
-          bar.style.cssText=`
-            left:${di*cellW+3}px;
-            top:${rowTop+TOP_PAD+slot*(BAR_H+BAR_GAP)}px;
-            width:${spanDays*cellW-6}px;
-            border-radius:${isTrueStart?'5px':'0px'} ${isTrueEnd?'5px':'0px'} ${isTrueEnd?'5px':'0px'} ${isTrueStart?'5px':'0px'};
-          `;
-          const icons=(ev.platform||'').split(',').map(p=>p.trim()).filter(p=>PLATFORM_ICONS[p]).map(p=>PLATFORM_ICONS[p]).join('');
-          const regionBadge = {kr:'KR', jp:'JP', en:'EN'};
-          const badgeColors = {kr:'#185FA5', jp:'#0F6E56', en:'#3C3489'};
-          const badge = regionBadge[ev.region];
-          const badgeHtml = badge ? `<span style="font-size:10px;font-weight:700;background:rgba(255,255,255,0.35);color:inherit;border-radius:3px;padding:0 4px;margin-right:3px;letter-spacing:0.3px;flex-shrink:0">${badge}</span>` : '';
-          bar.innerHTML=`<span style="display:inline-flex;align-items:center;gap:2px;vertical-align:middle;max-width:100%;overflow:hidden">${badgeHtml}<span style="display:inline-flex;align-items:center;gap:3px">${icons}</span>${icons?' ':''}${ev.name}</span>`;
-          bar.title=`${ev.name}\n${REGION_LABELS[ev.region]||ev.region}\n${ev.start_date} ~ ${ev.end_date}${ev.note?'\n'+ev.note:''}`;
-          bar.onclick=e=>{e.stopPropagation();openDetail(ev.id);};
-          if(isTrueStart){
-            bar.draggable=true;
-            bar.addEventListener('dragstart',e=>{
-              e.stopPropagation();
-              e.dataTransfer.setData('evId',ev.id);
-              e.dataTransfer.setData('origStart',ev.start_date);
-              e.dataTransfer.setData('origEnd',ev.end_date);
-              setTimeout(()=>bar.classList.add('dragging'),0);
-            });
-            bar.addEventListener('dragend',()=>bar.classList.remove('dragging'));
+
+          // isOther 기준으로 구간 분리 — 월 경계에서 opacity 달라지게
+          const segments=[];
+          let segStart=di, segOther=dates[w*7+di].isOther;
+          for(let si=di+1;si<=end;si++){
+            const o=dates[w*7+si].isOther;
+            if(o!==segOther){segments.push({start:segStart,end:si-1,isOther:segOther});segStart=si;segOther=o;}
           }
-          cal.appendChild(bar);
+          segments.push({start:segStart,end,isOther:segOther});
+
+          segments.forEach((seg,segIdx)=>{
+            const segSpan=seg.end-seg.start+1;
+            const isFirstSeg=segIdx===0;
+            const isLastSeg=segIdx===segments.length-1;
+            const roundL=(isTrueStart&&isFirstSeg)?'5px':'0px';
+            const roundR=(isTrueEnd&&isLastSeg)?'5px':'0px';
+            const bar=document.createElement('div');
+            bar.className=`ev-bar ${ev.region}`;
+            bar.style.cssText=`
+              left:${seg.start*cellW+3}px;
+              top:${rowTop+TOP_PAD+slot*(BAR_H+BAR_GAP)}px;
+              width:${segSpan*cellW-6}px;
+              border-radius:${roundL} ${roundR} ${roundR} ${roundL};
+              opacity:${seg.isOther?'0.3':'1'};
+            `;
+            if(isFirstSeg){
+              const icons=(ev.platform||'').split(',').map(p=>p.trim()).filter(p=>PLATFORM_ICONS[p]).map(p=>PLATFORM_ICONS[p]).join('');
+              const regionBadge={kr:'KR',jp:'JP',en:'EN'};
+              const badge=regionBadge[ev.region];
+              const badgeHtml=badge?`<span style="font-size:10px;font-weight:700;background:rgba(255,255,255,0.35);color:inherit;border-radius:3px;padding:0 4px;margin-right:3px;letter-spacing:0.3px;flex-shrink:0">${badge}</span>`:'';
+              bar.innerHTML=`<span style="display:inline-flex;align-items:center;gap:2px;vertical-align:middle;max-width:100%;overflow:hidden">${badgeHtml}<span style="display:inline-flex;align-items:center;gap:3px">${icons}</span>${icons?' ':''}${ev.name}</span>`;
+            } else {
+              bar.innerHTML='&nbsp;';
+            }
+            bar.title=`${ev.name}\n${REGION_LABELS[ev.region]||ev.region}\n${ev.start_date} ~ ${ev.end_date}${ev.note?'\n'+ev.note:''}`;
+            bar.onclick=e=>{e.stopPropagation();openDetail(ev.id);};
+            if(isTrueStart&&isFirstSeg){
+              bar.draggable=true;
+              bar.addEventListener('dragstart',e=>{
+                e.stopPropagation();
+                e.dataTransfer.setData('evId',ev.id);
+                e.dataTransfer.setData('origStart',ev.start_date);
+                e.dataTransfer.setData('origEnd',ev.end_date);
+                setTimeout(()=>bar.classList.add('dragging'),0);
+              });
+              bar.addEventListener('dragend',()=>bar.classList.remove('dragging'));
+            }
+            cal.appendChild(bar);
+          });
           di=end+1;
         }
       });
