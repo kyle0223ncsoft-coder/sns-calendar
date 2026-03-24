@@ -31,11 +31,11 @@
   .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .legend { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
   .legend-chip {
-    font-size: 11px; font-weight: 500; padding: 3px 9px;
+    font-size: 13px; font-weight: 600; padding: 5px 14px;
     border-radius: 20px; border: 1.5px solid; white-space: nowrap;
   }
-  .legend-chip.game { background: var(--game-bg); color: var(--game-c); border-color: var(--game-border); }
-  .legend-chip.fun  { background: var(--fun-bg);  color: var(--fun-c);  border-color: var(--fun-border); }
+  .legend-chip.game { background: var(--game-border); color: #fff; border-color: var(--game-border); }
+  .legend-chip.fun  { background: var(--fun-border);  color: #fff; border-color: var(--fun-border); }
   .legend-chip.kr   { background: var(--kr-bg);   color: var(--kr-c);   border-color: var(--kr-border); }
   .legend-chip.jp   { background: var(--jp-bg);   color: var(--jp-c);   border-color: var(--jp-border); }
   .legend-chip.en   { background: var(--en-bg);   color: var(--en-c);   border-color: var(--en-border); }
@@ -70,6 +70,8 @@
     font-size: 11px; font-weight: 600; color: var(--text-3);
     text-align: center; letter-spacing: 0.5px; text-transform: uppercase;
   }
+  .dow.sun { color: #DC2626; }
+  .dow.sat { color: #2563EB; }
   .day {
     background: var(--surface); min-height: 120px; padding: 8px;
     cursor: pointer; transition: background 0.1s; position: relative;
@@ -84,20 +86,46 @@
     border-radius: 50%; margin-bottom: 3px;
   }
   .day.today .day-num { background: var(--text); color: #fff; }
+  .day.is-sun .day-num { color: #DC2626; }
+  .day.is-sat .day-num { color: #2563EB; }
+  .day.is-sun.today .day-num, .day.is-sat.today .day-num { color: #fff; }
 
   .event {
-    border-radius: 4px; padding: 2px 6px; font-size: 11px;
+    height: 20px; line-height: 20px;
+    padding: 0 6px; font-size: 11px;
     margin-bottom: 2px; white-space: nowrap; overflow: hidden;
     text-overflow: ellipsis; cursor: pointer; font-weight: 500;
-    border-left: 2.5px solid transparent; transition: opacity 0.1s;
+    transition: opacity 0.1s; position: relative;
+    border-radius: 4px;
   }
-  .event:hover { opacity: 0.75; }
-  .event.game { background: var(--game-bg); color: var(--game-c); border-left-color: var(--game-border); }
-  .event.fun  { background: var(--fun-bg);  color: var(--fun-c);  border-left-color: var(--fun-border); }
-  .event.kr   { background: var(--kr-bg);   color: var(--kr-c);   border-left-color: var(--kr-border); }
-  .event.jp   { background: var(--jp-bg);   color: var(--jp-c);   border-left-color: var(--jp-border); }
-  .event.en   { background: var(--en-bg);   color: var(--en-c);   border-left-color: var(--en-border); }
-  .event.span-mid, .event.span-end { opacity: 0.4; font-size: 10px; }
+  .event:hover { opacity: 0.8; }
+  .event.game { background: var(--game-border); color: #fff; }
+  .event.fun  { background: var(--fun-border);  color: #fff; }
+  .event.kr   { background: var(--kr-bg);   color: var(--kr-c);   }
+  .event.jp   { background: var(--jp-bg);   color: var(--jp-c);   }
+  .event.en   { background: var(--en-bg);   color: var(--en-c);   }
+  .event.span-start {
+    border-radius: 4px 0 0 4px;
+    margin-right: -1px;
+  }
+  .event.span-mid {
+    border-radius: 0;
+    margin-left: -1px; margin-right: -1px;
+    padding: 0 2px;
+  }
+  .event.span-end {
+    border-radius: 0 4px 4px 0;
+    margin-left: -1px;
+    padding: 0 2px;
+  }
+  .event.span-mid, .event.span-end { overflow: hidden; }
+
+  /* row slot system — each event occupies a vertical slot consistently */
+  .day-events { position: relative; }
+
+  .event.dragging { opacity: 0.4; cursor: grabbing; }
+  .event[draggable="true"] { cursor: grab; }
+  .day.drag-over { background: #EFF6FF; outline: 2px dashed #378ADD; outline-offset: -2px; }
 
   .day-add {
     position: absolute; bottom: 5px; right: 5px;
@@ -273,25 +301,74 @@ function render() {
   document.getElementById('month-label').textContent = `${curYear}년 ${months[curMonth]}`;
   const cal = document.getElementById('cal');
   cal.innerHTML = '';
-  ['일','월','화','수','목','금','토'].forEach(d => {
+  ['일','월','화','수','목','금','토'].forEach((d, i) => {
     const el = document.createElement('div');
-    el.className = 'dow'; el.textContent = d; cal.appendChild(el);
+    el.className = 'dow' + (i===0?' sun':i===6?' sat':'');
+    el.textContent = d; cal.appendChild(el);
   });
   const first = new Date(curYear, curMonth, 1).getDay();
   const daysInMonth = new Date(curYear, curMonth+1, 0).getDate();
   const daysInPrev = new Date(curYear, curMonth, 0).getDate();
-  const total = Math.ceil((first + daysInMonth) / 7) * 7;
+  const totalCells = Math.ceil((first + daysInMonth) / 7) * 7;
+  const totalWeeks = totalCells / 7;
 
-  for (let i = 0; i < total; i++) {
+  // build date array
+  const dates = [];
+  for (let i = 0; i < totalCells; i++) {
     let date, isOther = false;
     if (i < first) { date = new Date(curYear, curMonth-1, daysInPrev - first + i + 1); isOther = true; }
     else if (i >= first + daysInMonth) { date = new Date(curYear, curMonth+1, i - first - daysInMonth + 1); isOther = true; }
     else { date = new Date(curYear, curMonth, i - first + 1); }
+    dates.push({ date, isOther, ds: toDateStr(date.getFullYear(), date.getMonth(), date.getDate()) });
+  }
 
+  // assign slots per week row — so spanning events stay on same row
+  // slots[weekIdx][slotIdx] = evId or null
+  const weekSlots = Array.from({length: totalWeeks}, () => []);
+  const evSlotMap = {}; // evId -> slot index (per week)
+
+  for (let w = 0; w < totalWeeks; w++) {
+    const weekDates = dates.slice(w*7, w*7+7).map(d => d.ds);
+    const slots = weekSlots[w];
+    const eventsThisWeek = events.filter(ev =>
+      weekDates.some(ds => ev.start_date <= ds && ev.end_date >= ds)
+    );
+    // sort: multi-day first, then by start
+    eventsThisWeek.sort((a,b) => {
+      const aLen = (new Date(a.end_date) - new Date(a.start_date));
+      const bLen = (new Date(b.end_date) - new Date(b.start_date));
+      if (bLen !== aLen) return bLen - aLen;
+      return a.start_date < b.start_date ? -1 : 1;
+    });
+    eventsThisWeek.forEach(ev => {
+      // find first free slot
+      let slot = 0;
+      while (true) {
+        const occupied = slots[slot] || [];
+        const conflict = weekDates.some((ds, di) => {
+          if (ev.start_date <= ds && ev.end_date >= ds) {
+            return occupied[di];
+          }
+          return false;
+        });
+        if (!conflict) break;
+        slot++;
+      }
+      if (!slots[slot]) slots[slot] = {};
+      weekDates.forEach((ds, di) => {
+        if (ev.start_date <= ds && ev.end_date >= ds) slots[slot][di] = ev.id;
+      });
+      if (!evSlotMap[ev.id]) evSlotMap[ev.id] = {};
+      evSlotMap[ev.id][w] = slot;
+    });
+  }
+
+  // render cells
+  for (let i = 0; i < totalCells; i++) {
+    const { date, isOther, ds } = dates[i];
     const cell = document.createElement('div');
-    cell.className = 'day' + (isOther ? ' other' : '');
-    const ds = toDateStr(date.getFullYear(), date.getMonth(), date.getDate());
-
+    const dow = i % 7;
+    cell.className = 'day' + (isOther ? ' other' : '') + (dow===0?' is-sun':dow===6?' is-sat':'');
     if (!isOther && date.getDate() === today.getDate() &&
         date.getMonth() === today.getMonth() &&
         date.getFullYear() === today.getFullYear())
@@ -302,25 +379,116 @@ function render() {
     numDiv.textContent = date.getDate();
     cell.appendChild(numDiv);
 
-    getEventsForDate(ds).forEach(ev => {
-      const el = document.createElement('div');
-      const pos = spanPos(ev, ds);
-      el.className = `event ${ev.region}`;
-      if (pos === 'mid' || pos === 'end') {
-        el.classList.add('span-' + pos);
-        el.textContent = '\u00a0';
-      } else {
-        el.textContent = ev.platform ? `${ev.name} · ${ev.platform}` : ev.name;
+    const w = Math.floor(i / 7);
+    const d = i % 7;
+    const slots = weekSlots[w];
+    const maxSlot = slots.length;
+
+    // render each slot
+    for (let slot = 0; slot < maxSlot; slot++) {
+      const slotData = slots[slot] || {};
+      const evId = slotData[d];
+      if (!evId) {
+        // empty placeholder to keep alignment
+        const ph = document.createElement('div');
+        ph.style.cssText = 'height:22px;margin-bottom:2px';
+        cell.appendChild(ph);
+        continue;
       }
+      const ev = events.find(e => e.id === evId);
+      if (!ev) continue;
+
+      // is this the start of the event in this week?
+      const weekStart = dates[w*7].ds;
+      const isWeekStart = ev.start_date >= weekStart ? ev.start_date === ds : d === 0;
+      const weekEnd = dates[w*7+6].ds;
+      const isWeekEnd = ev.end_date <= weekEnd ? ev.end_date === ds : d === 6;
+      const isTrueStart = ev.start_date === ds;
+      const isTrueEnd = ev.end_date === ds;
+
+      const el = document.createElement('div');
+      el.className = `event ${ev.region}`;
+      el.style.marginBottom = '2px';
+
+      if (isTrueStart && isTrueEnd) {
+        // single day
+      } else if (isWeekStart && isWeekEnd) {
+        el.classList.add('span-start');
+        el.style.borderRadius = isTrueStart ? '4px 0 0 4px' : '0';
+        el.style.borderRadius = (isTrueStart ? '4px' : '0') + ' 0 0 ' + (isTrueStart ? '4px' : '0');
+      } else if (isWeekStart) {
+        el.classList.add('span-start');
+        el.style.borderRadius = isTrueStart ? '4px 0 0 4px' : '0 0 0 0';
+        el.style.marginRight = '-1px';
+      } else if (isWeekEnd) {
+        el.classList.add('span-end');
+        el.style.borderRadius = isTrueEnd ? '0 4px 4px 0' : '0';
+        el.style.marginLeft = '-1px';
+        el.style.padding = '0 2px';
+      } else {
+        el.classList.add('span-mid');
+        el.style.borderRadius = '0';
+        el.style.marginLeft = '-1px';
+        el.style.marginRight = '-1px';
+        el.style.padding = '0';
+      }
+
+      // show label only on start cell of week
+      if (isWeekStart) {
+        el.textContent = ev.name;
+      } else {
+        el.textContent = '\u00a0';
+      }
+
       el.title = `${ev.name}\n${REGION_LABELS[ev.region] || ev.region}\n${ev.start_date} ~ ${ev.end_date}${ev.note ? '\n' + ev.note : ''}`;
       el.onclick = e => { e.stopPropagation(); openEdit(ev.id); };
+
+      // drag: only from start cell
+      if (isWeekStart) {
+        el.draggable = true;
+        el.addEventListener('dragstart', e => {
+          e.stopPropagation();
+          e.dataTransfer.setData('evId', ev.id);
+          e.dataTransfer.setData('origStart', ev.start_date);
+          e.dataTransfer.setData('origEnd', ev.end_date);
+          setTimeout(() => el.classList.add('dragging'), 0);
+        });
+        el.addEventListener('dragend', () => el.classList.remove('dragging'));
+      }
+
       cell.appendChild(el);
-    });
+    }
 
     const addBtn = document.createElement('div');
     addBtn.className = 'day-add'; addBtn.textContent = '+';
     addBtn.onclick = e => { e.stopPropagation(); openAdd(ds); };
     cell.appendChild(addBtn);
+
+    // drop target
+    cell.addEventListener('dragover', e => {
+      e.preventDefault();
+      cell.classList.add('drag-over');
+    });
+    cell.addEventListener('dragleave', () => cell.classList.remove('drag-over'));
+    cell.addEventListener('drop', async e => {
+      e.preventDefault();
+      cell.classList.remove('drag-over');
+      const evId = e.dataTransfer.getData('evId');
+      const origStart = e.dataTransfer.getData('origStart');
+      const origEnd = e.dataTransfer.getData('origEnd');
+      if (!evId || !ds) return;
+
+      // shift start/end by same number of days
+      const diff = (new Date(ds) - new Date(origStart)) / 86400000;
+      const newStart = shiftDate(origStart, diff);
+      const newEnd   = shiftDate(origEnd,   diff);
+
+      const { error } = await sb.from('events').update({ start_date: newStart, end_date: newEnd }).eq('id', evId);
+      if (error) { showToast('이동 실패'); return; }
+      showToast('일정 이동됐어요!');
+      await loadEvents();
+    });
+
     cal.appendChild(cell);
   }
 }
@@ -328,11 +496,11 @@ function render() {
 function getEventsForDate(ds) {
   return events.filter(ev => ev.start_date <= ds && ev.end_date >= ds);
 }
-function spanPos(ev, ds) {
-  if (ev.start_date === ev.end_date) return 'single';
-  if (ev.start_date === ds) return 'start';
-  if (ev.end_date === ds) return 'end';
-  return 'mid';
+
+function shiftDate(dateStr, days) {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return toDateStr(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
 function openAdd(ds) {
