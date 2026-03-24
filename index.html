@@ -68,7 +68,11 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
 .day:hover{background:#FAFAF8}
 .day.other{background:#FBFAF8}
 .day.other .day-num{color:var(--text-3)}
-.day.drag-over{background:#EFF6FF;outline:2px dashed #378ADD;outline-offset:-2px}
+.day.is-highlighted { background: var(--hl-bg, #FFF9E6) !important; }
+.day.is-highlighted .day-num { font-weight: 600; }
+.hl-label { font-size: 10px; font-weight: 600; color: var(--hl-color, #854F0B); margin-left: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; display: inline-block; vertical-align: middle; }
+.day-num-row { display: flex; align-items: center; margin-bottom: 3px; }
+.day.drag-over{background:#EFF6FF !important;outline:2px dashed #378ADD;outline-offset:-2px}
 .day-num{font-size:13px;font-weight:500;color:var(--text-2);width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:50%;margin-bottom:3px}
 .day.today .day-num{background:var(--text);color:#fff}
 .day.is-sun .day-num{color:#DC2626}
@@ -88,9 +92,9 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
 .ev-bar.dragging{opacity:.4}
 
 /* modal shared */
-.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:100;align-items:center;justify-content:center;padding:16px}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:1000;align-items:flex-start;justify-content:center;padding:24px 16px;overflow-y:auto}
 .modal-bg.open{display:flex}
-.modal{background:var(--surface);border-radius:14px;padding:24px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.12)}
+.modal{background:var(--surface);border-radius:14px;padding:24px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.12);margin:auto}
 .modal-title{font-size:15px;font-weight:600;margin-bottom:18px}
 .form-row{margin-bottom:13px}
 .form-label{font-size:12px;font-weight:500;color:var(--text-2);margin-bottom:5px;display:block}
@@ -105,7 +109,11 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
 .btn-del{background:#FEE2E2;color:#991B1B;border-color:#FECACA;margin-right:auto}
 .btn-cancel:hover,.btn-save:hover,.btn-del:hover{opacity:.75}
 
-/* platform toggles */
+/* highlight color picker */
+.hl-color-opt { display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;color:var(--text-2);padding:5px 10px;border-radius:20px;border:1.5px solid var(--border);background:var(--c);transition:border-color .15s }
+.hl-color-opt input { display:none }
+.hl-color-opt:has(input:checked) { border-color:var(--b);font-weight:600 }
+.hl-color-opt span { color:var(--text) }
 .plat-toggles{display:flex;gap:8px;flex-wrap:wrap}
 .plat-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 10px;border-radius:var(--rs);border:1.5px solid var(--border);background:var(--surface);cursor:pointer;transition:all .15s;min-width:52px}
 .plat-btn:hover{border-color:rgba(0,0,0,.2);background:var(--bg)}
@@ -183,59 +191,106 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
 <div class="modal-bg" id="modal">
   <div class="modal">
     <div class="modal-title" id="modal-title">소재 추가</div>
-    <div class="form-row">
-      <label class="form-label">소재명 *</label>
-      <input class="form-input" id="f-name" placeholder="예: 봄 시즌 이벤트 피드"/>
-    </div>
-    <div class="form-row">
-      <label class="form-label">분류 *</label>
-      <select class="form-select" id="f-region">
-        <option value="game">🎮 게임 콘텐츠 소재 (공통)</option>
-        <option value="fun">🎉 Fun/참여형 (공통)</option>
-        <option value="kr">🇰🇷 KR 단독</option>
-        <option value="jp">🇯🇵 JP 단독</option>
-        <option value="en">🌐 EN 단독</option>
-      </select>
-    </div>
-    <div class="form-row">
-      <label class="form-label">플랫폼</label>
-      <div class="plat-toggles" id="platform-toggles">
-        <button type="button" class="plat-btn" data-plat="X" style="--plat-color:#000;--plat-bg:#f0f0f0" onclick="togglePlat(this)">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.737-8.835L1.254 2.25H8.08l4.253 5.622 5.91-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-          <span>X</span>
-        </button>
-        <button type="button" class="plat-btn" data-plat="Facebook" style="--plat-color:#1877F2;--plat-bg:#e7f0fd" onclick="togglePlat(this)">
-          <svg viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#1877F2"/><path d="M16.5 8H14c-.3 0-.5.2-.5.5V10H16l-.3 2H13.5v6H11v-6H9.5v-2H11V8.3C11 6.5 12.1 5.5 13.8 5.5c.8 0 1.7.1 2.7.2V8z" fill="white"/></svg>
-          <span>FB</span>
-        </button>
-        <button type="button" class="plat-btn" data-plat="Instagram" style="--plat-color:#E1306C;--plat-bg:#fdeef4" onclick="togglePlat(this)">
-          <svg viewBox="0 0 24 24" fill="#E1306C"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
-          <span>INS</span>
-        </button>
-        <button type="button" class="plat-btn" data-plat="Youtube" style="--plat-color:#FF0000;--plat-bg:#fff0f0" onclick="togglePlat(this)">
-          <svg viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#FF0000"/><path d="M9.5 8v8l6-4-6-4z" fill="white"/></svg>
-          <span>YT</span>
-        </button>
-        <button type="button" class="plat-btn" data-plat="Discord" style="--plat-color:#5865F2;--plat-bg:#eef0fe" onclick="togglePlat(this)">
-          <svg viewBox="0 0 24 24" fill="#5865F2"><path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03z"/></svg>
-          <span>DC</span>
-        </button>
-      </div>
-    </div>
-    <div class="form-row form-row-2">
+
+    <!-- 특별 기간 토글 -->
+    <div class="form-row" style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg);border-radius:var(--rs);margin-bottom:14px">
       <div>
-        <label class="form-label">시작일 *</label>
-        <input type="date" class="form-input" id="f-start"/>
+        <div style="font-size:13px;font-weight:500;color:var(--text)">특별 기간 강조</div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:2px">셀 배경색 + 날짜 옆 이름 표시</div>
       </div>
-      <div>
-        <label class="form-label">종료일 *</label>
-        <input type="date" class="form-input" id="f-end"/>
+      <label style="position:relative;width:36px;height:20px;cursor:pointer;flex-shrink:0">
+        <input type="checkbox" id="f-highlight" onchange="toggleHighlightMode(this.checked)" style="opacity:0;width:0;height:0">
+        <span id="hl-toggle-track" style="position:absolute;inset:0;background:var(--color-border-secondary,#ccc);border-radius:10px;transition:background .2s"></span>
+        <span id="hl-toggle-thumb" style="position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)"></span>
+      </label>
+    </div>
+
+    <!-- 일반 소재 필드 -->
+    <div id="normal-fields">
+      <div class="form-row">
+        <label class="form-label">소재명 *</label>
+        <input class="form-input" id="f-name" placeholder="예: 봄 시즌 이벤트 피드"/>
+      </div>
+      <div class="form-row">
+        <label class="form-label">분류 *</label>
+        <select class="form-select" id="f-region">
+          <option value="game">🎮 게임 콘텐츠 소재 (공통)</option>
+          <option value="fun">🎉 Fun/참여형 (공통)</option>
+          <option value="kr">🇰🇷 KR 단독</option>
+          <option value="jp">🇯🇵 JP 단독</option>
+          <option value="en">🌐 EN 단독</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label class="form-label">플랫폼</label>
+        <div class="plat-toggles" id="platform-toggles">
+          <button type="button" class="plat-btn" data-plat="X" style="--plat-color:#000;--plat-bg:#f0f0f0" onclick="togglePlat(this)">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.737-8.835L1.254 2.25H8.08l4.253 5.622 5.91-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            <span>X</span>
+          </button>
+          <button type="button" class="plat-btn" data-plat="Facebook" style="--plat-color:#1877F2;--plat-bg:#e7f0fd" onclick="togglePlat(this)">
+            <svg viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#1877F2"/><path d="M16.5 8H14c-.3 0-.5.2-.5.5V10H16l-.3 2H13.5v6H11v-6H9.5v-2H11V8.3C11 6.5 12.1 5.5 13.8 5.5c.8 0 1.7.1 2.7.2V8z" fill="white"/></svg>
+            <span>FB</span>
+          </button>
+          <button type="button" class="plat-btn" data-plat="Instagram" style="--plat-color:#E1306C;--plat-bg:#fdeef4" onclick="togglePlat(this)">
+            <svg viewBox="0 0 24 24" fill="#E1306C"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+            <span>INS</span>
+          </button>
+          <button type="button" class="plat-btn" data-plat="Youtube" style="--plat-color:#FF0000;--plat-bg:#fff0f0" onclick="togglePlat(this)">
+            <svg viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#FF0000"/><path d="M9.5 8v8l6-4-6-4z" fill="white"/></svg>
+            <span>YT</span>
+          </button>
+          <button type="button" class="plat-btn" data-plat="Discord" style="--plat-color:#5865F2;--plat-bg:#eef0fe" onclick="togglePlat(this)">
+            <svg viewBox="0 0 24 24" fill="#5865F2"><path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03z"/></svg>
+            <span>DC</span>
+          </button>
+        </div>
+      </div>
+      <div class="form-row form-row-2">
+        <div>
+          <label class="form-label">시작일 *</label>
+          <input type="date" class="form-input" id="f-start"/>
+        </div>
+        <div>
+          <label class="form-label">종료일 *</label>
+          <input type="date" class="form-input" id="f-end"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">메모</label>
+        <textarea class="form-textarea" id="f-note" placeholder="추가 설명, 담당자, 링크 등"></textarea>
       </div>
     </div>
-    <div class="form-row">
-      <label class="form-label">메모</label>
-      <textarea class="form-textarea" id="f-note" placeholder="추가 설명, 담당자, 링크 등"></textarea>
+
+    <!-- 특별 기간 전용 필드 -->
+    <div id="highlight-fields" style="display:none">
+      <div class="form-row">
+        <label class="form-label">특별 기간 이름 *</label>
+        <input class="form-input" id="f-hl-name" placeholder="예: CBT, 발렌타인 위크"/>
+      </div>
+      <div class="form-row">
+        <label class="form-label">배경 색상</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <label class="hl-color-opt" style="--c:#FFF9E6;--b:#F59E0B"><input type="radio" name="hl-color" value="#FFF9E6|#F59E0B|#92400E" checked> <span>노랑</span></label>
+          <label class="hl-color-opt" style="--c:#EAF3DE;--b:#639922"><input type="radio" name="hl-color" value="#EAF3DE|#639922|#3B6D11"> <span>초록</span></label>
+          <label class="hl-color-opt" style="--c:#E6F1FB;--b:#378ADD"><input type="radio" name="hl-color" value="#E6F1FB|#378ADD|#185FA5"> <span>파랑</span></label>
+          <label class="hl-color-opt" style="--c:#FAECE7;--b:#D85A30"><input type="radio" name="hl-color" value="#FAECE7|#D85A30|#993C1D"> <span>주황</span></label>
+          <label class="hl-color-opt" style="--c:#EEEDFE;--b:#7F77DD"><input type="radio" name="hl-color" value="#EEEDFE|#7F77DD|#3C3489"> <span>보라</span></label>
+          <label class="hl-color-opt" style="--c:#FCE8F3;--b:#D4538E"><input type="radio" name="hl-color" value="#FCE8F3|#D4538E|#9B2567"> <span>핑크</span></label>
+        </div>
+      </div>
+      <div class="form-row form-row-2">
+        <div>
+          <label class="form-label">시작일 *</label>
+          <input type="date" class="form-input" id="f-hl-start"/>
+        </div>
+        <div>
+          <label class="form-label">종료일 *</label>
+          <input type="date" class="form-input" id="f-hl-end"/>
+        </div>
+      </div>
     </div>
+
     <div class="modal-btns">
       <button class="btn-del" id="btn-del" style="display:none" onclick="deleteEvent()">삭제</button>
       <button class="btn-cancel" onclick="closeModal()">취소</button>
@@ -437,7 +492,7 @@ function render(){
   for(let w=0;w<weeks;w++){
     const wd=dates.slice(w*7,w*7+7).map(d=>d.ds);
     const slots=weekSlots[w];
-    const evs=events.filter(ev=>activeFilters.has(ev.region)&&wd.some(ds=>ev.start_date<=ds&&ev.end_date>=ds));
+    const evs=events.filter(ev=>!ev.is_highlight&&activeFilters.has(ev.region)&&wd.some(ds=>ev.start_date<=ds&&ev.end_date>=ds));
     evs.sort((a,b)=>{
       const al=new Date(a.end_date)-new Date(a.start_date);
       const bl=new Date(b.end_date)-new Date(b.start_date);
@@ -463,11 +518,42 @@ function render(){
     const cell=document.createElement('div');
     cell.className='day'+(isOther?' other':'')+(dow===0?' is-sun':dow===6?' is-sat':'');
     cell.dataset.ds=ds;
+
+    // 특별 기간 강조
+    if(!isOther){
+      const hlEv=events.find(ev=>ev.is_highlight&&ev.start_date<=ds&&ev.end_date>=ds);
+      if(hlEv){
+        const parts=(hlEv.note||'#FFF9E6|#F59E0B|#92400E').split('|');
+        const [bg,border,text]=parts;
+        cell.classList.add('is-highlighted');
+        cell.style.setProperty('--hl-bg',bg);
+        cell.style.setProperty('--hl-color',text);
+        cell.style.outline=`2px solid ${border}`;
+        cell.style.outlineOffset='-2px';
+      }
+    }
     if(!isOther&&date.getDate()===today.getDate()&&date.getMonth()===today.getMonth()&&date.getFullYear()===today.getFullYear())
       cell.classList.add('today');
+    const numRow=document.createElement('div');
+    numRow.className='day-num-row';
     const num=document.createElement('div');
     num.className='day-num'; num.textContent=date.getDate();
-    cell.appendChild(num);
+    numRow.appendChild(num);
+    // 특별 기간 이름 표시
+    if(!isOther){
+      const hlEv=events.find(ev=>ev.is_highlight&&ev.start_date<=ds&&ev.end_date>=ds);
+      if(hlEv&&hlEv.start_date===ds){
+        const lbl=document.createElement('span');
+        lbl.className='hl-label';
+        const parts=(hlEv.note||'#FFF9E6|#F59E0B|#92400E').split('|');
+        lbl.style.color=parts[2]||'#92400E';
+        lbl.style.cursor='pointer';
+        lbl.textContent=hlEv.name;
+        lbl.onclick=e=>{e.stopPropagation();openEdit(hlEv.id);};
+        numRow.appendChild(lbl);
+      }
+    }
+    cell.appendChild(numRow);
     const add=document.createElement('div');
     add.className='day-add'; add.textContent='+';
     add.onclick=e=>{e.stopPropagation();openAdd(ds);};
@@ -573,6 +659,15 @@ function getSelectedPlats(){ return Array.from(document.querySelectorAll('.plat-
 function setSelectedPlats(str){ const p=str?str.split(',').map(s=>s.trim()):[]; document.querySelectorAll('.plat-btn').forEach(b=>b.classList.toggle('on',p.includes(b.dataset.plat))); }
 
 // modals
+function toggleHighlightMode(on){
+  document.getElementById('normal-fields').style.display=on?'none':'block';
+  document.getElementById('highlight-fields').style.display=on?'block':'none';
+  const track=document.getElementById('hl-toggle-track');
+  const thumb=document.getElementById('hl-toggle-thumb');
+  if(track) track.style.background=on?'#378ADD':'var(--color-border-secondary,#ccc)';
+  if(thumb) thumb.style.transform=on?'translateX(16px)':'translateX(0)';
+}
+
 function openAdd(ds){
   editId=null;
   document.getElementById('modal-title').textContent='소재 추가';
@@ -581,31 +676,62 @@ function openAdd(ds){
   document.getElementById('f-start').value=ds||today.toISOString().slice(0,10);
   document.getElementById('f-end').value=ds||today.toISOString().slice(0,10);
   document.getElementById('f-note').value='';
+  document.getElementById('f-highlight').checked=false;
+  document.getElementById('f-hl-name').value='';
+  document.getElementById('f-hl-start').value=ds||today.toISOString().slice(0,10);
+  document.getElementById('f-hl-end').value=ds||today.toISOString().slice(0,10);
+  document.querySelector('input[name="hl-color"]').checked=true;
   document.getElementById('btn-del').style.display='none';
   setSelectedPlats('');
+  toggleHighlightMode(false);
   document.getElementById('modal').classList.add('open');
 }
 function openEdit(id){
   const ev=events.find(e=>e.id===id); if(!ev) return;
   editId=id;
   document.getElementById('modal-title').textContent='소재 수정';
-  document.getElementById('f-name').value=ev.name;
-  document.getElementById('f-region').value=ev.region;
-  document.getElementById('f-start').value=ev.start_date;
-  document.getElementById('f-end').value=ev.end_date;
-  document.getElementById('f-note').value=ev.note||'';
-  setSelectedPlats(ev.platform||'');
+  const isHl=ev.is_highlight||false;
+  document.getElementById('f-highlight').checked=isHl;
+  toggleHighlightMode(isHl);
+  if(isHl){
+    document.getElementById('f-hl-name').value=ev.name;
+    document.getElementById('f-hl-start').value=ev.start_date;
+    document.getElementById('f-hl-end').value=ev.end_date;
+    // restore color selection
+    const saved=ev.note||'';
+    document.querySelectorAll('input[name="hl-color"]').forEach(r=>{
+      if(saved && r.value.startsWith(saved.split('|')[0])) r.checked=true;
+    });
+  } else {
+    document.getElementById('f-name').value=ev.name;
+    document.getElementById('f-region').value=ev.region;
+    document.getElementById('f-start').value=ev.start_date;
+    document.getElementById('f-end').value=ev.end_date;
+    document.getElementById('f-note').value=ev.note||'';
+    setSelectedPlats(ev.platform||'');
+  }
   document.getElementById('btn-del').style.display='block';
   document.getElementById('modal').classList.add('open');
 }
 function closeModal(){ document.getElementById('modal').classList.remove('open'); }
 
 async function saveEvent(){
-  const name=document.getElementById('f-name').value.trim();
-  if(!name){showToast('소재명을 입력해주세요');return;}
-  const start=document.getElementById('f-start').value;
-  const end=document.getElementById('f-end').value;
-  const payload={name,region:document.getElementById('f-region').value,platform:getSelectedPlats().join(','),start_date:start,end_date:end<start?start:end,note:document.getElementById('f-note').value.trim()};
+  const isHl=document.getElementById('f-highlight').checked;
+  let payload;
+  if(isHl){
+    const hlName=document.getElementById('f-hl-name').value.trim();
+    if(!hlName){showToast('특별 기간 이름을 입력해주세요');return;}
+    const hlStart=document.getElementById('f-hl-start').value;
+    const hlEnd=document.getElementById('f-hl-end').value;
+    const colorVal=document.querySelector('input[name="hl-color"]:checked')?.value||'#FFF9E6|#F59E0B|#92400E';
+    payload={name:hlName,region:'game',platform:'',start_date:hlStart,end_date:hlEnd<hlStart?hlStart:hlEnd,note:colorVal,is_highlight:true};
+  } else {
+    const name=document.getElementById('f-name').value.trim();
+    if(!name){showToast('소재명을 입력해주세요');return;}
+    const start=document.getElementById('f-start').value;
+    const end=document.getElementById('f-end').value;
+    payload={name,region:document.getElementById('f-region').value,platform:getSelectedPlats().join(','),start_date:start,end_date:end<start?start:end,note:document.getElementById('f-note').value.trim(),is_highlight:false};
+  }
   let error;
   if(editId){ ({error}=await sb.from('events').update(payload).eq('id',editId)); }
   else { ({error}=await sb.from('events').insert(payload)); }
