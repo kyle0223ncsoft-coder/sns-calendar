@@ -521,7 +521,11 @@ function render(){
             border-radius:${isTrueStart?'5px':'0px'} ${isTrueEnd?'5px':'0px'} ${isTrueEnd?'5px':'0px'} ${isTrueStart?'5px':'0px'};
           `;
           const icons=(ev.platform||'').split(',').map(p=>p.trim()).filter(p=>PLATFORM_ICONS[p]).map(p=>PLATFORM_ICONS[p]).join('');
-          bar.innerHTML=`<span style="display:inline-flex;align-items:center;gap:3px;vertical-align:middle">${icons}</span>${icons?' ':''}${ev.name}`;
+          const regionBadge = {kr:'KR', jp:'JP', en:'EN'};
+          const badgeColors = {kr:'#185FA5', jp:'#0F6E56', en:'#3C3489'};
+          const badge = regionBadge[ev.region];
+          const badgeHtml = badge ? `<span style="font-size:10px;font-weight:700;background:rgba(255,255,255,0.35);color:inherit;border-radius:3px;padding:0 4px;margin-right:3px;letter-spacing:0.3px;flex-shrink:0">${badge}</span>` : '';
+          bar.innerHTML=`<span style="display:inline-flex;align-items:center;gap:2px;vertical-align:middle;max-width:100%;overflow:hidden">${badgeHtml}<span style="display:inline-flex;align-items:center;gap:3px">${icons}</span>${icons?' ':''}${ev.name}</span>`;
           bar.title=`${ev.name}\n${REGION_LABELS[ev.region]||ev.region}\n${ev.start_date} ~ ${ev.end_date}${ev.note?'\n'+ev.note:''}`;
           bar.onclick=e=>{e.stopPropagation();openDetail(ev.id);};
           if(isTrueStart){
