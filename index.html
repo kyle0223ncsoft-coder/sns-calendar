@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>글로벌 SNS 캘린더</title>
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --game-c: #3B6D11; --game-bg: #EAF3DE; --game-border: #639922;
+    --fun-c:  #993C1D; --fun-bg:  #FAECE7; --fun-border: #D85A30;
+    --kr-c:   #185FA5; --kr-bg:   #E6F1FB; --kr-border:  #378ADD;
+    --jp-c:   #0F6E56; --jp-bg:   #E1F5EE; --jp-border:  #1D9E75;
+    --en-c:   #3C3489; --en-bg:   #EEEDFE; --en-border:  #7F77DD;
+    --bg: #F8F7F4; --surface: #FFFFFF;
+    --border: rgba(0,0,0,0.09);
+    --text: #1a1a18; --text-2: #6b6b67; --text-3: #9e9d99;
+    --radius: 10px; --radius-sm: 6px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Pretendard', -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  .app-header {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 0 24px; display: flex; align-items: center;
+    justify-content: space-between; height: 56px;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .app-title { font-size: 15px; font-weight: 600; letter-spacing: -0.3px; }
+  .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .legend { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .legend-chip {
+    font-size: 11px; font-weight: 500; padding: 3px 9px;
+    border-radius: 20px; border: 1.5px solid; white-space: nowrap;
+  }
+  .legend-chip.game { background: var(--game-bg); color: var(--game-c); border-color: var(--game-border); }
+  .legend-chip.fun  { background: var(--fun-bg);  color: var(--fun-c);  border-color: var(--fun-border); }
+  .legend-chip.kr   { background: var(--kr-bg);   color: var(--kr-c);   border-color: var(--kr-border); }
+  .legend-chip.jp   { background: var(--jp-bg);   color: var(--jp-c);   border-color: var(--jp-border); }
+  .legend-chip.en   { background: var(--en-bg);   color: var(--en-c);   border-color: var(--en-border); }
+  .btn-add {
+    background: var(--text); color: #fff; border: none;
+    border-radius: var(--radius-sm); padding: 7px 14px;
+    font-size: 13px; font-family: inherit; cursor: pointer;
+    font-weight: 500; transition: opacity 0.15s; white-space: nowrap;
+  }
+  .btn-add:hover { opacity: 0.8; }
+
+  .cal-wrap { padding: 20px 24px; max-width: 1200px; margin: 0 auto; }
+  .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .cal-month { font-size: 20px; font-weight: 600; letter-spacing: -0.5px; }
+  .cal-nav-btns { display: flex; gap: 6px; }
+  .nav-btn {
+    width: 32px; height: 32px; border: 1px solid var(--border);
+    background: var(--surface); border-radius: var(--radius-sm);
+    cursor: pointer; font-size: 15px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.1s;
+  }
+  .nav-btn:hover { background: var(--bg); }
+
+  .cal-grid {
+    display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
+    border-radius: var(--radius); border: 1px solid var(--border);
+    overflow: hidden; background: var(--border); gap: 1px;
+  }
+  .dow {
+    background: var(--surface); padding: 8px 10px;
+    font-size: 11px; font-weight: 600; color: var(--text-3);
+    text-align: center; letter-spacing: 0.5px; text-transform: uppercase;
+  }
+  .day {
+    background: var(--surface); min-height: 120px; padding: 8px;
+    cursor: pointer; transition: background 0.1s; position: relative;
+  }
+  .day:hover { background: #FAFAF8; }
+  .day.other { background: #FBFAF8; }
+  .day.other .day-num { color: var(--text-3); }
+  .day-num {
+    font-size: 12px; font-weight: 500; color: var(--text-2);
+    width: 24px; height: 24px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; margin-bottom: 3px;
+  }
+  .day.today .day-num { background: var(--text); color: #fff; }
+
+  .event {
+    border-radius: 4px; padding: 2px 6px; font-size: 11px;
+    margin-bottom: 2px; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; cursor: pointer; font-weight: 500;
+    border-left: 2.5px solid transparent; transition: opacity 0.1s;
+  }
+  .event:hover { opacity: 0.75; }
+  .event.game { background: var(--game-bg); color: var(--game-c); border-left-color: var(--game-border); }
+  .event.fun  { background: var(--fun-bg);  color: var(--fun-c);  border-left-color: var(--fun-border); }
+  .event.kr   { background: var(--kr-bg);   color: var(--kr-c);   border-left-color: var(--kr-border); }
+  .event.jp   { background: var(--jp-bg);   color: var(--jp-c);   border-left-color: var(--jp-border); }
+  .event.en   { background: var(--en-bg);   color: var(--en-c);   border-left-color: var(--en-border); }
+  .event.span-mid, .event.span-end { opacity: 0.4; font-size: 10px; }
+
+  .day-add {
+    position: absolute; bottom: 5px; right: 5px;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--bg); border: 1px solid var(--border);
+    color: var(--text-3); font-size: 14px; line-height: 1;
+    display: none; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .day:hover .day-add { display: flex; }
+
+  .modal-bg {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.3); z-index: 100;
+    align-items: center; justify-content: center; padding: 16px;
+  }
+  .modal-bg.open { display: flex; }
+  .modal {
+    background: var(--surface); border-radius: 14px; padding: 24px;
+    width: 100%; max-width: 400px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.12);
+  }
+  .modal-title { font-size: 15px; font-weight: 600; margin-bottom: 18px; }
+  .form-row { margin-bottom: 13px; }
+  .form-label { font-size: 12px; font-weight: 500; color: var(--text-2); margin-bottom: 5px; display: block; }
+  .form-input, .form-select, .form-textarea {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--border);
+    border-radius: var(--radius-sm); font-size: 13px; font-family: inherit;
+    color: var(--text); background: var(--surface);
+    outline: none; transition: border-color 0.15s;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: rgba(0,0,0,0.3); }
+  .form-textarea { resize: vertical; min-height: 60px; }
+  .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+  .btn-cancel, .btn-save, .btn-del {
+    padding: 8px 16px; border-radius: var(--radius-sm);
+    font-size: 13px; font-family: inherit; font-weight: 500;
+    cursor: pointer; border: 1px solid var(--border); transition: opacity 0.1s;
+  }
+  .btn-cancel { background: var(--surface); color: var(--text-2); }
+  .btn-save   { background: var(--text); color: #fff; border-color: var(--text); }
+  .btn-del    { background: #FEE2E2; color: #991B1B; border-color: #FECACA; margin-right: auto; }
+  .btn-cancel:hover, .btn-save:hover, .btn-del:hover { opacity: 0.75; }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--text); color: #fff; padding: 10px 18px;
+    border-radius: 20px; font-size: 13px; font-weight: 500;
+    opacity: 0; transition: opacity 0.2s;
+    pointer-events: none; z-index: 200; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+
+  @media (max-width: 700px) {
+    .legend { display: none; }
+    .cal-wrap { padding: 12px; }
+    .app-header { padding: 0 12px; }
+    .day { min-height: 80px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="app-title">Global SNS Calendar</div>
+  <div class="header-right">
+    <div class="legend">
+      <div class="legend-chip game">게임 콘텐츠 소재 (공통)</div>
+      <div class="legend-chip fun">Fun/참여형 (공통)</div>
+      <div class="legend-chip kr">KR 단독</div>
+      <div class="legend-chip jp">JP 단독</div>
+      <div class="legend-chip en">EN 단독</div>
+    </div>
+    <button class="btn-add" onclick="openAdd()">+ 소재 추가</button>
+  </div>
+</header>
+
+<div class="cal-wrap">
+  <div class="cal-nav">
+    <div class="cal-month" id="month-label"></div>
+    <div class="cal-nav-btns">
+      <button class="nav-btn" onclick="changeMonth(-1)">&#8592;</button>
+      <button class="nav-btn" onclick="changeMonth(1)">&#8594;</button>
+    </div>
+  </div>
+  <div class="cal-grid" id="cal">
+    <div style="grid-column:1/-1;display:flex;align-items:center;justify-content:center;height:200px;font-size:13px;color:var(--text-3)">불러오는 중...</div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">소재 추가</div>
+    <div class="form-row">
+      <label class="form-label">소재명 *</label>
+      <input class="form-input" id="f-name" placeholder="예: 봄 시즌 이벤트 피드" />
+    </div>
+    <div class="form-row">
+      <label class="form-label">분류 *</label>
+      <select class="form-select" id="f-region">
+        <option value="game">🎮 게임 콘텐츠 소재 (공통)</option>
+        <option value="fun">🎉 Fun/참여형 (공통)</option>
+        <option value="kr">🇰🇷 KR 단독</option>
+        <option value="jp">🇯🇵 JP 단독</option>
+        <option value="en">🌐 EN 단독</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label class="form-label">플랫폼</label>
+      <input class="form-input" id="f-platform" placeholder="예: Instagram, TikTok, Facebook" />
+    </div>
+    <div class="form-row form-row-2">
+      <div>
+        <label class="form-label">시작일 *</label>
+        <input type="date" class="form-input" id="f-start" />
+      </div>
+      <div>
+        <label class="form-label">종료일 *</label>
+        <input type="date" class="form-input" id="f-end" />
+      </div>
+    </div>
+    <div class="form-row">
+      <label class="form-label">메모</label>
+      <textarea class="form-textarea" id="f-note" placeholder="추가 설명, 담당자, 링크 등"></textarea>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-del" id="btn-del" style="display:none" onclick="deleteEvent()">삭제</button>
+      <button class="btn-cancel" onclick="closeModal()">취소</button>
+      <button class="btn-save" onclick="saveEvent()">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://ahetdkarbdrmsuahawag.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_qXPGvnM2PyP_-Dv1LKImvw_unm4vuKU';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const REGION_LABELS = {
+  game: '게임 콘텐츠 소재 (공통)',
+  fun:  'Fun/참여형 (공통)',
+  kr:   'KR 단독',
+  jp:   'JP 단독',
+  en:   'EN 단독'
+};
+
+let events = [], curYear, curMonth, editId = null;
+const today = new Date();
+curYear = today.getFullYear();
+curMonth = today.getMonth();
+
+async function loadEvents() {
+  const { data, error } = await sb.from('events').select('*');
+  if (error) { showToast('데이터 로드 실패'); return; }
+  events = data || [];
+  render();
+}
+
+function pad(n) { return n < 10 ? '0' + n : '' + n; }
+function toDateStr(y, m, d) { return `${y}-${pad(m+1)}-${pad(d)}`; }
+
+function changeMonth(d) {
+  curMonth += d;
+  if (curMonth < 0) { curMonth = 11; curYear--; }
+  if (curMonth > 11) { curMonth = 0; curYear++; }
+  render();
+}
+
+function render() {
+  const months = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  document.getElementById('month-label').textContent = `${curYear}년 ${months[curMonth]}`;
+  const cal = document.getElementById('cal');
+  cal.innerHTML = '';
+  ['일','월','화','수','목','금','토'].forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'dow'; el.textContent = d; cal.appendChild(el);
+  });
+  const first = new Date(curYear, curMonth, 1).getDay();
+  const daysInMonth = new Date(curYear, curMonth+1, 0).getDate();
+  const daysInPrev = new Date(curYear, curMonth, 0).getDate();
+  const total = Math.ceil((first + daysInMonth) / 7) * 7;
+
+  for (let i = 0; i < total; i++) {
+    let date, isOther = false;
+    if (i < first) { date = new Date(curYear, curMonth-1, daysInPrev - first + i + 1); isOther = true; }
+    else if (i >= first + daysInMonth) { date = new Date(curYear, curMonth+1, i - first - daysInMonth + 1); isOther = true; }
+    else { date = new Date(curYear, curMonth, i - first + 1); }
+
+    const cell = document.createElement('div');
+    cell.className = 'day' + (isOther ? ' other' : '');
+    const ds = toDateStr(date.getFullYear(), date.getMonth(), date.getDate());
+
+    if (!isOther && date.getDate() === today.getDate() &&
+        date.getMonth() === today.getMonth() &&
+        date.getFullYear() === today.getFullYear())
+      cell.classList.add('today');
+
+    const numDiv = document.createElement('div');
+    numDiv.className = 'day-num';
+    numDiv.textContent = date.getDate();
+    cell.appendChild(numDiv);
+
+    getEventsForDate(ds).forEach(ev => {
+      const el = document.createElement('div');
+      const pos = spanPos(ev, ds);
+      el.className = `event ${ev.region}`;
+      if (pos === 'mid' || pos === 'end') {
+        el.classList.add('span-' + pos);
+        el.textContent = '\u00a0';
+      } else {
+        el.textContent = ev.platform ? `${ev.name} · ${ev.platform}` : ev.name;
+      }
+      el.title = `${ev.name}\n${REGION_LABELS[ev.region] || ev.region}\n${ev.start_date} ~ ${ev.end_date}${ev.note ? '\n' + ev.note : ''}`;
+      el.onclick = e => { e.stopPropagation(); openEdit(ev.id); };
+      cell.appendChild(el);
+    });
+
+    const addBtn = document.createElement('div');
+    addBtn.className = 'day-add'; addBtn.textContent = '+';
+    addBtn.onclick = e => { e.stopPropagation(); openAdd(ds); };
+    cell.appendChild(addBtn);
+    cal.appendChild(cell);
+  }
+}
+
+function getEventsForDate(ds) {
+  return events.filter(ev => ev.start_date <= ds && ev.end_date >= ds);
+}
+function spanPos(ev, ds) {
+  if (ev.start_date === ev.end_date) return 'single';
+  if (ev.start_date === ds) return 'start';
+  if (ev.end_date === ds) return 'end';
+  return 'mid';
+}
+
+function openAdd(ds) {
+  editId = null;
+  document.getElementById('modal-title').textContent = '소재 추가';
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-region').value = 'game';
+  document.getElementById('f-platform').value = '';
+  document.getElementById('f-start').value = ds || today.toISOString().slice(0,10);
+  document.getElementById('f-end').value = ds || today.toISOString().slice(0,10);
+  document.getElementById('f-note').value = '';
+  document.getElementById('btn-del').style.display = 'none';
+  document.getElementById('modal').classList.add('open');
+}
+function openEdit(id) {
+  const ev = events.find(e => e.id === id);
+  if (!ev) return;
+  editId = id;
+  document.getElementById('modal-title').textContent = '소재 수정';
+  document.getElementById('f-name').value = ev.name;
+  document.getElementById('f-region').value = ev.region;
+  document.getElementById('f-platform').value = ev.platform || '';
+  document.getElementById('f-start').value = ev.start_date;
+  document.getElementById('f-end').value = ev.end_date;
+  document.getElementById('f-note').value = ev.note || '';
+  document.getElementById('btn-del').style.display = 'block';
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+async function saveEvent() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { showToast('소재명을 입력해주세요'); return; }
+  const start = document.getElementById('f-start').value;
+  const end = document.getElementById('f-end').value;
+  const payload = {
+    name,
+    region: document.getElementById('f-region').value,
+    platform: document.getElementById('f-platform').value.trim(),
+    start_date: start,
+    end_date: end < start ? start : end,
+    note: document.getElementById('f-note').value.trim()
+  };
+  let error;
+  if (editId) {
+    ({ error } = await sb.from('events').update(payload).eq('id', editId));
+  } else {
+    ({ error } = await sb.from('events').insert(payload));
+  }
+  if (error) { showToast('저장 실패: ' + error.message); return; }
+  showToast(editId ? '수정됐어요!' : '추가됐어요!');
+  closeModal();
+  await loadEvents();
+}
+
+async function deleteEvent() {
+  if (!confirm('이 소재를 삭제할까요?')) return;
+  const { error } = await sb.from('events').delete().eq('id', editId);
+  if (error) { showToast('삭제 실패'); return; }
+  showToast('삭제됐어요');
+  closeModal();
+  await loadEvents();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+sb.channel('events-changes')
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => loadEvents())
+  .subscribe();
+
+loadEvents();
+</script>
+</body>
+</html>
