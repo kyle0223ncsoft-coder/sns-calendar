@@ -79,7 +79,7 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
 .day.is-sun .day-num{color:#DC2626}
 .day.is-sat .day-num{color:#2563EB}
 .day.is-sun.today .day-num,.day.is-sat.today .day-num{color:#fff}
-.day-add{position:absolute;bottom:5px;right:5px;width:18px;height:18px;border-radius:50%;background:var(--bg);border:1px solid var(--border);color:var(--text-3);font-size:14px;line-height:1;display:none;align-items:center;justify-content:center;cursor:pointer}
+.day-add{position:absolute;top:8px;right:6px;width:18px;height:18px;border-radius:50%;background:var(--surface);border:1px solid var(--border);color:var(--text-3);font-size:14px;line-height:1;display:none;align-items:center;justify-content:center;cursor:pointer;z-index:5}
 .day:hover .day-add{display:flex}
 
 /* event bars — drawn as absolute overlay */
@@ -582,6 +582,24 @@ function render(){
     if(!cells.length||!dowEl) return;
     const dowH=dowEl.getBoundingClientRect().height;
     const cellW=cells[0].getBoundingClientRect().width;
+    const BASE_H=160;
+    const BAR_H=24, BAR_GAP=3, TOP_PAD=36;
+
+    // 각 주의 최대 슬롯 수를 계산해서 셀 높이 조정
+    const rowHeights = [];
+    for(let w=0;w<weeks;w++){
+      const maxSlot = weekSlots[w].length;
+      const needed = TOP_PAD + maxSlot*(BAR_H+BAR_GAP) + 12;
+      rowHeights[w] = Math.max(BASE_H, needed);
+    }
+
+    // 셀 높이 적용
+    for(let i=0;i<total;i++){
+      const w=Math.floor(i/7);
+      cells[i].style.minHeight = rowHeights[w]+'px';
+    }
+
+    // 실제 셀 높이 재계산 후 바 그리기
     const cellH=cells[0].getBoundingClientRect().height;
 
     for(let w=0;w<weeks;w++){
