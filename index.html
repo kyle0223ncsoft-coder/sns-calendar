@@ -495,6 +495,12 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
       <div style="font-size:11px;color:var(--text-3);margin-top:8px;text-align:center">투고문은 소재 메모란에 입력하세요</div>
     </div>
 
+    <!-- 검수 현황 -->
+    <div id="review-status-section" style="display:none;border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
+      <div style="font-size:11px;font-weight:600;color:var(--text-3);margin-bottom:8px">검수 현황</div>
+      <div id="review-status-list"></div>
+    </div>
+
     <div class="detail-actions">
       <button class="btn-detail-del" onclick="deleteFromDetail()">삭제</button>
       <button class="btn-detail-copy" onclick="copyEvent()">복사해서 추가</button>
@@ -619,7 +625,7 @@ const PLATFORM_ICONS = {
 };
 const PLAT_ICONS_SM = Object.fromEntries(Object.entries(PLATFORM_ICONS).map(([k,v])=>[k,v.replace(/width="13" height="13"/g,'width="15" height="15"')]));
 
-let events = [], curYear, curMonth, editId = null, detailId = null;
+let events = [], reviewStatusMap = {}, curYear, curMonth, editId = null, detailId = null;
 const activeFilters = new Set(['game','fun','kr','jp','en']);
 const today = new Date();
 curYear = today.getFullYear();
@@ -633,7 +639,25 @@ async function loadEvents(){
   const {data,error} = await sb.from('events').select('*');
   if(error){ showToast('데이터 로드 실패'); return; }
   events = data||[];
+  await loadAllReviewStatuses();
   render();
+}
+
+async function loadAllReviewStatuses(){
+  // 최신 스냅샷의 검수 현황만 가져오기
+  const {data:snaps}=await sb.from('snapshots').select('id').order('created_at',{ascending:false}).limit(1);
+  if(!snaps||!snaps.length){reviewStatusMap={};return;}
+  const latestSnapId=snaps[0].id;
+  const {data:snapEvs}=await sb.from('snapshot_events').select('id,event_id').eq('snapshot_id',latestSnapId);
+  if(!snapEvs||!snapEvs.length){reviewStatusMap={};return;}
+  const snapEvIds=snapEvs.map(s=>s.id);
+  const {data:rvs}=await sb.from('reviews').select('snapshot_event_id,status').in('snapshot_event_id',snapEvIds);
+  const snapEvMap=Object.fromEntries(snapEvs.map(s=>[s.id,s.event_id]));
+  reviewStatusMap={};
+  (rvs||[]).forEach(rv=>{
+    const evId=snapEvMap[rv.snapshot_event_id];
+    if(evId) reviewStatusMap[evId]=rv.status;
+  });
 }
 
 function toggleFilter(region,el){
@@ -857,7 +881,9 @@ function render(){
               const regionBadge={kr:'KR',jp:'JP',en:'EN'};
               const badge=regionBadge[ev.region];
               const badgeHtml=badge?`<span style="font-size:10px;font-weight:700;background:rgba(255,255,255,0.35);color:inherit;border-radius:3px;padding:0 4px;margin-right:3px;letter-spacing:0.3px;flex-shrink:0">${badge}</span>`:'';
-              bar.innerHTML=`<span style="display:inline-flex;align-items:center;gap:2px;vertical-align:middle;max-width:100%;overflow:hidden">${badgeHtml}<span style="display:inline-flex;align-items:center;gap:3px">${icons}</span>${icons?' ':''}${ev.name}</span>`;
+              const rvStatus=reviewStatusMap[ev.id];
+              const dotHtml=rvStatus?`<span style="width:7px;height:7px;border-radius:50%;background:${rvStatus==='approved'?'#16a34a':'#dc2626'};display:inline-block;margin-right:3px;flex-shrink:0;vertical-align:middle"></span>`:'';
+              bar.innerHTML=`<span style="display:inline-flex;align-items:center;gap:2px;vertical-align:middle;max-width:100%;overflow:hidden">${dotHtml}${badgeHtml}<span style="display:inline-flex;align-items:center;gap:3px">${icons}</span>${icons?' ':''}${ev.name}</span>`;
             } else {
               bar.innerHTML='&nbsp;';
             }
@@ -1205,10 +1231,55 @@ function openDetail(id){
   document.querySelectorAll('.x-region-btn').forEach(b=>b.classList.toggle('active',b.dataset.region==='kr'));
   renderXCard('kr');
 
+  // 검수 현황 로드
+  loadReviewStatus(id);
+
   // 탭 초기화
   switchDetailTab('info');
   document.getElementById('detail-modal').classList.add('open');
 }
+async function loadReviewStatus(eventId){
+  const section=document.getElementById('review-status-section');
+  const list=document.getElementById('review-status-list');
+  section.style.display='none';
+  list.innerHTML='';
+
+  // 이 소재가 포함된 스냅샷의 검수 의견 가져오기
+  const {data:snapEvs}=await sb.from('snapshot_events').select('id,snapshot_id').eq('event_id',eventId);
+  if(!snapEvs||!snapEvs.length) return;
+
+  const snapIds=snapEvs.map(s=>s.snapshot_id);
+  const snapEvIds=snapEvs.map(s=>s.id);
+
+  const [{data:snaps},{data:rvs}]=await Promise.all([
+    sb.from('snapshots').select('id,version_name,created_at').in('id',snapIds).order('created_at',{ascending:false}),
+    sb.from('reviews').select('*').in('snapshot_event_id',snapEvIds)
+  ]);
+
+  if(!rvs||!rvs.length) return;
+
+  section.style.display='block';
+  const snapMap=Object.fromEntries((snaps||[]).map(s=>[s.id,s]));
+  const snapEvMap=Object.fromEntries(snapEvs.map(s=>[s.id,s.snapshot_id]));
+
+  const html=rvs.map(rv=>{
+    const snapId=snapEvMap[rv.snapshot_event_id];
+    const snap=snapMap[snapId]||{};
+    const dt=new Date(rv.created_at);
+    const dtStr=`${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,'0')}.${String(dt.getDate()).padStart(2,'0')}`;
+    const isApproved=rv.status==='approved';
+    const statusStyle=isApproved
+      ?'background:#dcfce7;border:1px solid #86efac;color:#16a34a'
+      :'background:#fee2e2;border:1px solid #fca5a5;color:#dc2626';
+    return `<div style="padding:8px 10px;border-radius:var(--rs);margin-bottom:6px;font-size:12px;line-height:1.6;${statusStyle}">
+      <div style="font-weight:600;margin-bottom:2px">${isApproved?'✅ 승인':'🔄 수정 요청'} <span style="font-weight:400;opacity:.7">— ${snap.version_name||'버전 미상'} (${dtStr})</span></div>
+      ${rv.comment?`<div style="margin-bottom:2px">${rv.comment}</div>`:''}
+      ${rv.reviewer?`<div style="opacity:.7;font-size:11px">검수자: ${rv.reviewer}</div>`:''}
+    </div>`;
+  }).join('');
+  list.innerHTML=html;
+}
+
 function closeDetail(){ document.getElementById('detail-modal').classList.remove('open'); }
 function editFromDetail(){ closeDetail(); openEdit(detailId); }
 async function deleteFromDetail(){
