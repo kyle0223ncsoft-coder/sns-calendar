@@ -37,6 +37,8 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
 .chip.en{background:var(--en-bg);color:var(--en-c);border-color:var(--en-border)}
 .btn-add{background:var(--text);color:#fff;border:none;border-radius:var(--rs);padding:7px 14px;font-size:13px;font-family:inherit;cursor:pointer;font-weight:500;transition:opacity .15s;white-space:nowrap}
 .btn-add:hover{opacity:.8}
+.btn-commit{background:#2563EB;color:#fff;border:none;border-radius:var(--rs);padding:7px 14px;font-size:13px;font-family:inherit;cursor:pointer;font-weight:500;transition:opacity .15s;white-space:nowrap}
+.btn-commit:hover{opacity:.8}
 .btn-help{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
 .btn-help:hover{background:var(--text);color:#fff;border-color:var(--text)}
 
@@ -197,6 +199,7 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
       <div class="chip en"   onclick="toggleFilter('en',this)">EN 단독</div>
     </div>
     <button class="btn-add" onclick="openAdd()">+ 소재 추가</button>
+    <button class="btn-commit" onclick="openCommit()">검수 요청 →</button>
     <button class="btn-help" onclick="openHelp()">?</button>
   </div>
 </header>
@@ -564,6 +567,35 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- Commit Modal -->
+<div class="modal-bg" id="commit-modal">
+  <div class="modal" style="max-width:400px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+      <div class="modal-title" style="margin:0">검수 요청</div>
+      <button onclick="closeCommit()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-3);line-height:1">×</button>
+    </div>
+    <div class="form-row">
+      <label class="form-label">버전명 *</label>
+      <input class="form-input" id="commit-version" placeholder="예: 2026년 4월 1차 검수"/>
+    </div>
+    <div class="form-row">
+      <label class="form-label">작성자</label>
+      <input class="form-input" id="commit-author" placeholder="예: 이시현"/>
+    </div>
+    <div class="form-row">
+      <label class="form-label">전달 메모</label>
+      <textarea class="form-textarea" id="commit-note" placeholder="검수자에게 전달할 내용을 입력하세요"></textarea>
+    </div>
+    <div style="font-size:12px;color:var(--text-3);background:var(--bg);border-radius:var(--rs);padding:10px 12px;margin-bottom:16px;line-height:1.6">
+      현재 캘린더의 모든 소재가 스냅샷으로 저장돼요.<br>검수자는 이 버전을 기준으로 피드백을 남겨요.
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeCommit()">취소</button>
+      <button class="btn-save" onclick="submitCommit()" style="background:#2563EB;border-color:#2563EB">검수 요청 전송</button>
+    </div>
+  </div>
+</div>
 
 <script>
 const SUPABASE_URL = 'https://ahetdkarbdrmsuahawag.supabase.co';
@@ -1202,6 +1234,55 @@ function copyEvent(){
   document.getElementById('btn-del').style.display='none';
   editId=null;
   document.getElementById('modal').classList.add('open');
+}
+
+function openCommit(){
+  document.getElementById('commit-version').value='';
+  document.getElementById('commit-author').value='';
+  document.getElementById('commit-note').value='';
+  document.getElementById('commit-modal').classList.add('open');
+}
+function closeCommit(){ document.getElementById('commit-modal').classList.remove('open'); }
+
+async function submitCommit(){
+  const versionName=document.getElementById('commit-version').value.trim();
+  if(!versionName){showToast('버전명을 입력해주세요');return;}
+  const author=document.getElementById('commit-author').value.trim();
+  const note=document.getElementById('commit-note').value.trim();
+
+  showToast('검수 요청 중...');
+
+  // 1. 스냅샷 생성
+  const {data:snap,error:snapErr}=await sb.from('snapshots').insert({
+    version_name:versionName,
+    note,
+    created_by:author
+  }).select().single();
+  if(snapErr){showToast('오류: '+snapErr.message);return;}
+
+  // 2. 현재 events 전체를 snapshot_events에 복사
+  const snapEvents=events.map(ev=>({
+    snapshot_id:snap.id,
+    event_id:ev.id,
+    name:ev.name, region:ev.region, platform:ev.platform,
+    start_date:ev.start_date, end_date:ev.end_date,
+    note:ev.note, note_kr:ev.note_kr, note_jp:ev.note_jp, note_en:ev.note_en,
+    note_kr_updated_at:ev.note_kr_updated_at,
+    note_jp_updated_at:ev.note_jp_updated_at,
+    note_en_updated_at:ev.note_en_updated_at,
+    assignee:ev.assignee,
+    media_url:ev.media_url,
+    media_url_kr:ev.media_url_kr, media_url_jp:ev.media_url_jp, media_url_en:ev.media_url_en,
+    is_highlight:ev.is_highlight||false,
+    hl_color:ev.note&&ev.is_highlight?ev.note:null,
+    created_at:ev.created_at
+  }));
+
+  const {error:evErr}=await sb.from('snapshot_events').insert(snapEvents);
+  if(evErr){showToast('소재 저장 오류: '+evErr.message);return;}
+
+  closeCommit();
+  showToast(`✓ "${versionName}" 검수 요청 완료! (${snapEvents.length}개 소재)`);
 }
 
 function openHelp(){ document.getElementById('help-modal').classList.add('open'); }
