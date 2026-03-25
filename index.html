@@ -290,22 +290,26 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
       <div class="form-row">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
           <label class="form-label" style="margin:0">투고문</label>
-          <div style="display:flex;gap:4px">
-            <button type="button" class="note-tab-btn active" data-region="kr" onclick="switchNoteTab('kr',this)">KR</button>
-            <button type="button" class="note-tab-btn" data-region="jp" onclick="switchNoteTab('jp',this)">JP</button>
-            <button type="button" class="note-tab-btn" data-region="en" onclick="switchNoteTab('en',this)">EN</button>
+          <div style="display:flex;align-items:center;gap:6px">
+            <button type="button" id="note-hint-btn" onclick="toggleNoteHint()" style="width:18px;height:18px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface);color:var(--text-3);font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">?</button>
+            <div class="note-tab-btn active" data-region="kr" onclick="switchNoteTab('kr',this)" style="cursor:pointer">KR</div>
+            <div class="note-tab-btn" data-region="jp" onclick="switchNoteTab('jp',this)" style="cursor:pointer">JP</div>
+            <div class="note-tab-btn" data-region="en" onclick="switchNoteTab('en',this)" style="cursor:pointer">EN</div>
           </div>
         </div>
+        <div id="note-hint" style="display:none;font-size:11px;color:var(--text-3);background:var(--bg);border-radius:var(--rs);padding:8px 10px;margin-bottom:8px">입력하지 않은 권역은 X 미리보기에서 '(투고문 없음)'으로 표시돼요</div>
         <div id="note-tab-kr">
           <textarea class="form-textarea" id="f-note-kr" placeholder="KR 투고문을 입력하세요&#10;&#10;#해시태그1 #해시태그2" style="min-height:100px"></textarea>
+          <div id="note-kr-updated" style="font-size:11px;color:var(--text-3);margin-top:4px;text-align:right;min-height:16px"></div>
         </div>
         <div id="note-tab-jp" style="display:none">
           <textarea class="form-textarea" id="f-note-jp" placeholder="JP 投稿文を入力してください&#10;&#10;#ハッシュタグ" style="min-height:100px"></textarea>
+          <div id="note-jp-updated" style="font-size:11px;color:var(--text-3);margin-top:4px;text-align:right;min-height:16px"></div>
         </div>
         <div id="note-tab-en" style="display:none">
           <textarea class="form-textarea" id="f-note-en" placeholder="Enter EN post content&#10;&#10;#hashtag" style="min-height:100px"></textarea>
+          <div id="note-en-updated" style="font-size:11px;color:var(--text-3);margin-top:4px;text-align:right;min-height:16px"></div>
         </div>
-        <div style="font-size:11px;color:var(--text-3);margin-top:5px">입력하지 않은 권역은 미리보기에서 '(투고문 없음)'으로 표시돼요</div>
       </div>
       <div class="form-row">
         <label class="form-label">담당자</label>
@@ -425,10 +429,12 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
         <div class="detail-label" style="color:#185FA5;font-weight:600">KR</div>
         <div class="detail-val" id="detail-note-kr" style="white-space:pre-wrap;line-height:1.6;font-size:12px"></div>
       </div>
+      <div style="border-top:1.5px solid var(--border);margin:6px 0" id="detail-note-div-jp"></div>
       <div class="detail-row" id="detail-note-jp-row">
         <div class="detail-label" style="color:#0F6E56;font-weight:600">JP</div>
         <div class="detail-val" id="detail-note-jp" style="white-space:pre-wrap;line-height:1.6;font-size:12px"></div>
       </div>
+      <div style="border-top:1.5px solid var(--border);margin:6px 0" id="detail-note-div-en"></div>
       <div class="detail-row" id="detail-note-en-row">
         <div class="detail-label" style="color:#3C3489;font-weight:600">EN</div>
         <div class="detail-val" id="detail-note-en" style="white-space:pre-wrap;line-height:1.6;font-size:12px"></div>
@@ -870,6 +876,7 @@ function openAdd(ds){
   document.getElementById('f-note-kr').value='';
   document.getElementById('f-note-jp').value='';
   document.getElementById('f-note-en').value='';
+  ['kr','jp','en'].forEach(r=>{const el=document.getElementById(`note-${r}-updated`);if(el)el.textContent='';});
   switchNoteTab('kr', null);
   document.getElementById('f-assignee').value='';
   document.getElementById('f-media-shared').checked=true;
@@ -909,6 +916,7 @@ function openEdit(id){
     document.getElementById('f-note-kr').value=ev.note_kr||'';
     document.getElementById('f-note-jp').value=ev.note_jp||'';
     document.getElementById('f-note-en').value=ev.note_en||'';
+    setNoteTimestamps(ev);
     switchNoteTab('kr', null);
     document.getElementById('f-assignee').value=ev.assignee||'';
     document.getElementById('f-media-url').value=ev.media_url||'';
@@ -948,7 +956,17 @@ async function saveEvent(){
     const start=document.getElementById('f-start').value;
     const end=document.getElementById('f-end').value;
     const isShared=document.getElementById('f-media-shared').checked;
-    payload={name,region:document.getElementById('f-region').value,platform:getSelectedPlats().join(','),start_date:start,end_date:end<start?start:end,note:'',note_kr:document.getElementById('f-note-kr').value.trim(),note_jp:document.getElementById('f-note-jp').value.trim(),note_en:document.getElementById('f-note-en').value.trim(),assignee:document.getElementById('f-assignee').value.trim(),media_url:isShared?document.getElementById('f-media-url').value.trim():'',media_url_kr:isShared?'':document.getElementById('f-media-url-kr').value.trim(),media_url_jp:isShared?'':document.getElementById('f-media-url-jp').value.trim(),media_url_en:isShared?'':document.getElementById('f-media-url-en').value.trim(),is_highlight:false};
+    const now=new Date().toISOString();
+    const prevEv=editId?events.find(e=>e.id===editId):null;
+    const newNoteKr=document.getElementById('f-note-kr').value.trim();
+    const newNoteJp=document.getElementById('f-note-jp').value.trim();
+    const newNoteEn=document.getElementById('f-note-en').value.trim();
+    payload={name,region:document.getElementById('f-region').value,platform:getSelectedPlats().join(','),start_date:start,end_date:end<start?start:end,note:'',
+      note_kr:newNoteKr,note_jp:newNoteJp,note_en:newNoteEn,
+      note_kr_updated_at:newNoteKr!==(prevEv?.note_kr||'')?now:(prevEv?.note_kr_updated_at||null),
+      note_jp_updated_at:newNoteJp!==(prevEv?.note_jp||'')?now:(prevEv?.note_jp_updated_at||null),
+      note_en_updated_at:newNoteEn!==(prevEv?.note_en||'')?now:(prevEv?.note_en_updated_at||null),
+      assignee:document.getElementById('f-assignee').value.trim(),media_url:isShared?document.getElementById('f-media-url').value.trim():'',media_url_kr:isShared?'':document.getElementById('f-media-url-kr').value.trim(),media_url_jp:isShared?'':document.getElementById('f-media-url-jp').value.trim(),media_url_en:isShared?'':document.getElementById('f-media-url-en').value.trim(),is_highlight:false};
   }
   let error;
   if(editId){ ({error}=await sb.from('events').update(payload).eq('id',editId)); }
@@ -1011,6 +1029,11 @@ function renderMediaPreview(url, containerId) {
 
 let currentXRegion = 'kr';
 
+function toggleNoteHint(){
+  const el=document.getElementById('note-hint');
+  if(el) el.style.display=el.style.display==='none'?'block':'none';
+}
+
 function toggleMediaGuide(){
   const g=document.getElementById('media-guide');
   if(g) g.style.display=g.style.display==='none'?'block':'none';
@@ -1036,6 +1059,26 @@ function getMediaUrlForRegion(ev, region){
   // 권역별 URL 있으면 우선, 없으면 공통 media_url 사용
   const map={kr:'media_url_kr',jp:'media_url_jp',en:'media_url_en'};
   return ev[map[region]]||ev.media_url||'';
+}
+
+function formatNoteTime(ts){
+  if(!ts) return '';
+  const d=new Date(ts);
+  const now=new Date();
+  const diff=Math.floor((now-d)/1000);
+  if(diff<60) return '방금 전 업데이트';
+  if(diff<3600) return `${Math.floor(diff/60)}분 전 업데이트`;
+  if(diff<86400) return `${Math.floor(diff/3600)}시간 전 업데이트`;
+  const y=d.getFullYear(), mo=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  const h=String(d.getHours()).padStart(2,'0'), m=String(d.getMinutes()).padStart(2,'0');
+  return `${y}.${mo}.${day} ${h}:${m} 업데이트`;
+}
+
+function setNoteTimestamps(ev){
+  ['kr','jp','en'].forEach(r=>{
+    const el=document.getElementById(`note-${r}-updated`);
+    if(el) el.textContent=formatNoteTime(ev[`note_${r}_updated_at`]);
+  });
 }
 
 function switchNoteTab(region, btn) {
@@ -1151,6 +1194,7 @@ function copyEvent(){
   document.getElementById('f-note-kr').value=ev.note_kr||'';
   document.getElementById('f-note-jp').value=ev.note_jp||'';
   document.getElementById('f-note-en').value=ev.note_en||'';
+  setNoteTimestamps(ev);
   switchNoteTab('kr', null);
   document.getElementById('f-start').value=ev.start_date;
   document.getElementById('f-end').value=ev.end_date;
