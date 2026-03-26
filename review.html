@@ -236,7 +236,9 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
 <script>
 const SUPABASE_URL='https://ahetdkarbdrmsuahawag.supabase.co';
 const SUPABASE_KEY='sb_publishable_qXPGvnM2PyP_-Dv1LKImvw_unm4vuKU';
-const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
+  realtime:{params:{eventsPerSecond:10},worker:false}
+});
 
 const REGION_LABELS={game:'게임 콘텐츠 소재 (공통)',fun:'Fun/참여형 (공통)',kr:'KR 단독',jp:'JP 단독',en:'EN 단독'};
 const REGION_BADGE={
