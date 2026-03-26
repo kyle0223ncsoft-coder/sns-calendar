@@ -461,7 +461,13 @@ function openDetail(id){
     document.getElementById('reviewer-name').value=ev.reviewer||'';
     document.getElementById('review-comment').value=ev.review_comment||'';
   } else {
-    existingEl.innerHTML=ev.review_requested?`<div style="padding:8px 10px;border-radius:var(--rs);background:#FFF9E6;border:1px solid #F59E0B;font-size:12px;color:#92400E;font-weight:500">🔔 마케터가 검수를 요청했어요</div>`:'';
+    existingEl.innerHTML=ev.review_requested?`<div style="padding:8px 10px;border-radius:var(--rs);background:#FFF9E6;border:1px solid #F59E0B;font-size:12px;color:#92400E;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:4px;margin-bottom:${ev.review_request_comment?'4px':'0'}">
+        <span style="font-weight:600">🔔 마케터가 검수를 요청했어요</span>
+        ${ev.review_type?`<span style="background:#F59E0B;color:#fff;font-size:10px;font-weight:600;padding:1px 7px;border-radius:20px">${ev.review_type==='소재'?'🎨 소재':'✍️ 투고문'}</span>`:''}
+      </div>
+      ${ev.review_request_comment?`<div style="color:#78350F">${ev.review_request_comment}</div>`:''}
+    </div>`:'';
     selectedStatus=null;
     document.getElementById('btn-approve').classList.remove('sel');
     document.getElementById('btn-revise').classList.remove('sel');
