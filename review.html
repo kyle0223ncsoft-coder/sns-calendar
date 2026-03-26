@@ -601,36 +601,31 @@ function sendNotification(title, body){
   setTimeout(()=>n.close(), 6000);
 }
 
-let prevEventsMap = {};
 
-function checkRequestChanges(newEvents){
-  newEvents.forEach(ev => {
-    const prev = prevEventsMap[ev.id];
-    if(!prev) return;
-    // 새 검수 요청
-    if(!prev.review_requested && ev.review_requested && !ev.review_status){
-      const typeLabel = ev.review_type ? (ev.review_type==='소재'?'🎨 소재':'✍️ 투고문') : '';
-      sendNotification(
-        `🔔 검수 요청 — ${ev.name}`,
-        [typeLabel, ev.review_request_comment].filter(Boolean).join(' · ') || '마케터가 검수를 요청했어요.'
-      );
-      showToast(`🔔 "${ev.name}" 검수 요청이 왔어요`, 'default');
-    }
-  });
-  prevEventsMap = Object.fromEntries(newEvents.map(e=>[e.id,e]));
-}
 
 async function loadEvents(){
   const {data,error}=await sb.from('events').select('*');
   if(error){showToast('로드 실패','error');return;}
-  const newEvents=data||[];
-  if(Object.keys(prevEventsMap).length > 0) checkRequestChanges(newEvents);
-  else prevEventsMap = Object.fromEntries(newEvents.map(e=>[e.id,e]));
-  events=newEvents;
+  events=data||[];
   renderCounts();
   render();
 }// 실시간 동기화
-sb.channel('events-review').on('postgres_changes',{event:'*',schema:'public',table:'events'},()=>loadEvents()).subscribe();
+sb.channel('events-review').on('postgres_changes',{event:'UPDATE',schema:'public',table:'events'},(payload)=>{
+  if(payload.new && payload.old){
+    const oldEv = payload.old;
+    const newEv = payload.new;
+    // 새 검수 요청
+    if(!oldEv.review_requested && newEv.review_requested && !newEv.review_status){
+      const typeLabel = newEv.review_type ? (newEv.review_type==='소재'?'🎨 소재':'✍️ 투고문') : '';
+      sendNotification(
+        `🔔 검수 요청 — ${newEv.name}`,
+        [typeLabel, newEv.review_request_comment].filter(Boolean).join(' · ') || '마케터가 검수를 요청했어요.'
+      );
+      showToast(`🔔 "${newEv.name}" 검수 요청이 왔어요`,'default');
+    }
+  }
+  loadEvents();
+}).on('postgres_changes',{event:'INSERT',schema:'public',table:'events'},()=>loadEvents()).subscribe();
 requestNotificationPermission();
 loadEvents();
 </script>

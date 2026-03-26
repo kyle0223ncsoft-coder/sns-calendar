@@ -750,10 +750,7 @@ function shiftDate(ds,days){ const d=new Date(ds); d.setDate(d.getDate()+days); 
 async function loadEvents(){
   const {data,error} = await sb.from('events').select('*');
   if(error){ showToast('데이터 로드 실패','error'); return; }
-  const newEvents = data||[];
-  if(Object.keys(prevEventsMap).length > 0) checkReviewChanges(newEvents);
-  else prevEventsMap = Object.fromEntries(newEvents.map(e=>[e.id,e]));
-  events = newEvents;
+  events = data||[];
   render();
 }
 
@@ -1681,35 +1678,30 @@ function sendNotification(title, body, icon=''){
   setTimeout(()=>n.close(), 6000);
 }
 
-// Realtime에서 검수 상태 변경 감지 → 마케터에게 알림
-let prevEventsMap = {};
 
-function checkReviewChanges(newEvents){
-  newEvents.forEach(ev => {
-    const prev = prevEventsMap[ev.id];
-    if(!prev) return;
-    // 수정 요청 들어왔을 때
-    if(prev.review_status !== 'revision' && ev.review_status === 'revision'){
-      sendNotification(
-        `🔄 수정 요청 — ${ev.name}`,
-        ev.review_comment ? `"${ev.review_comment}"` : '검수자가 수정을 요청했어요.',
-      );
-      showToast(`🔄 "${ev.name}" 수정 요청이 왔어요`,'error');
-    }
-    // 승인 들어왔을 때
-    if(prev.review_status !== 'approved' && ev.review_status === 'approved'){
-      sendNotification(
-        `✅ 승인됨 — ${ev.name}`,
-        ev.reviewer ? `${ev.reviewer}님이 승인했어요.` : '검수자가 승인했어요.',
-      );
-      showToast(`✅ "${ev.name}" 승인됐어요`,'success');
-    }
-  });
-  // 맵 갱신
-  prevEventsMap = Object.fromEntries(newEvents.map(e=>[e.id,e]));
-}
 
-sb.channel('events-changes').on('postgres_changes',{event:'*',schema:'public',table:'events'},()=>loadEvents()).subscribe();
+sb.channel('events-changes').on('postgres_changes',{event:'UPDATE',schema:'public',table:'events'},(payload)=>{
+  // 변경된 레코드를 직접 받아서 알림 감지
+  if(payload.new && payload.old){
+    const oldEv = payload.old;
+    const newEv = payload.new;
+    if(oldEv.review_status !== 'revision' && newEv.review_status === 'revision'){
+      sendNotification(
+        `🔄 수정 요청 — ${newEv.name}`,
+        newEv.review_comment ? `"${newEv.review_comment}"` : '검수자가 수정을 요청했어요.'
+      );
+      showToast(`🔄 "${newEv.name}" 수정 요청이 왔어요`,'error');
+    }
+    if(oldEv.review_status !== 'approved' && newEv.review_status === 'approved'){
+      sendNotification(
+        `✅ 승인됨 — ${newEv.name}`,
+        newEv.reviewer ? `${newEv.reviewer}님이 승인했어요.` : '검수자가 승인했어요.'
+      );
+      showToast(`✅ "${newEv.name}" 승인됐어요`,'success');
+    }
+  }
+  loadEvents();
+}).on('postgres_changes',{event:'INSERT',schema:'public',table:'events'},()=>loadEvents()).subscribe();
 
 requestNotificationPermission();
 loadEvents();
