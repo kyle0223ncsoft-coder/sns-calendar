@@ -428,17 +428,26 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
       </div>
       <div class="detail-row" id="detail-note-kr-row">
         <div class="detail-label" style="color:#185FA5;font-weight:600">KR</div>
-        <div class="detail-val" id="detail-note-kr" style="white-space:pre-wrap;line-height:1.6;font-size:12px"></div>
+        <div style="flex:1">
+          <div class="detail-val" id="detail-note-kr" style="white-space:pre-wrap;line-height:1.6;font-size:12px"></div>
+          <div id="detail-note-kr-ts" style="font-size:10px;color:var(--text-3);margin-top:3px;text-align:right"></div>
+        </div>
       </div>
       <div style="border-top:1.5px solid var(--border);margin:6px 0" id="detail-note-div-jp"></div>
       <div class="detail-row" id="detail-note-jp-row">
         <div class="detail-label" style="color:#0F6E56;font-weight:600">JP</div>
-        <div class="detail-val" id="detail-note-jp" style="white-space:pre-wrap;line-height:1.6;font-size:12px"></div>
+        <div style="flex:1">
+          <div class="detail-val" id="detail-note-jp" style="white-space:pre-wrap;line-height:1.6;font-size:12px"></div>
+          <div id="detail-note-jp-ts" style="font-size:10px;color:var(--text-3);margin-top:3px;text-align:right"></div>
+        </div>
       </div>
       <div style="border-top:1.5px solid var(--border);margin:6px 0" id="detail-note-div-en"></div>
       <div class="detail-row" id="detail-note-en-row">
         <div class="detail-label" style="color:#3C3489;font-weight:600">EN</div>
-        <div class="detail-val" id="detail-note-en" style="white-space:pre-wrap;line-height:1.6;font-size:12px"></div>
+        <div style="flex:1">
+          <div class="detail-val" id="detail-note-en" style="white-space:pre-wrap;line-height:1.6;font-size:12px"></div>
+          <div id="detail-note-en-ts" style="font-size:10px;color:var(--text-3);margin-top:3px;text-align:right"></div>
+        </div>
       </div>
       <div class="detail-row" id="detail-assignee-row">
         <div class="detail-label">담당자</div>
@@ -1214,13 +1223,16 @@ function openDetail(id){
   if(noteRow) noteRow.style.display='none';
 
   // 권역별 투고문 표시
-  [['kr','detail-note-kr-row','detail-note-kr'],
-   ['jp','detail-note-jp-row','detail-note-jp'],
-   ['en','detail-note-en-row','detail-note-en']].forEach(([r,rowId,valId])=>{
+  [['kr','detail-note-kr-row','detail-note-kr','detail-note-kr-ts'],
+   ['jp','detail-note-jp-row','detail-note-jp','detail-note-jp-ts'],
+   ['en','detail-note-en-row','detail-note-en','detail-note-en-ts']].forEach(([r,rowId,valId,tsId])=>{
     const row=document.getElementById(rowId);
     const val=document.getElementById(valId);
+    const ts=document.getElementById(tsId);
     const txt=ev[`note_${r}`]||'';
+    const updatedAt=ev[`note_${r}_updated_at`];
     if(row&&val){ val.textContent=txt||'(없음)'; val.style.color=txt?'var(--text)':'var(--text-3)'; row.style.display='flex'; }
+    if(ts) ts.textContent=updatedAt?formatNoteTime(updatedAt):'';
   });
 
   const assigneeRow=document.getElementById('detail-assignee-row');

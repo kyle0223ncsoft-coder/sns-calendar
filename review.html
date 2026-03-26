@@ -155,17 +155,26 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
       <div class="detail-row" id="detail-plat-row"><div class="detail-label">플랫폼</div><div class="detail-val" id="detail-plat"></div></div>
       <div class="detail-row" id="detail-kr-row">
         <div class="detail-label" style="color:#185FA5;font-weight:600">KR</div>
-        <div class="detail-val" id="detail-kr" style="white-space:pre-wrap;font-size:12px;line-height:1.6"></div>
+        <div style="flex:1">
+          <div class="detail-val" id="detail-kr" style="white-space:pre-wrap;font-size:12px;line-height:1.6"></div>
+          <div id="detail-kr-ts" style="font-size:10px;color:#9e9d99;margin-top:3px;text-align:right"></div>
+        </div>
       </div>
       <div style="border-top:1.5px solid var(--border);margin:6px 0"></div>
       <div class="detail-row" id="detail-jp-row">
         <div class="detail-label" style="color:#0F6E56;font-weight:600">JP</div>
-        <div class="detail-val" id="detail-jp" style="white-space:pre-wrap;font-size:12px;line-height:1.6"></div>
+        <div style="flex:1">
+          <div class="detail-val" id="detail-jp" style="white-space:pre-wrap;font-size:12px;line-height:1.6"></div>
+          <div id="detail-jp-ts" style="font-size:10px;color:#9e9d99;margin-top:3px;text-align:right"></div>
+        </div>
       </div>
       <div style="border-top:1.5px solid var(--border);margin:6px 0"></div>
       <div class="detail-row" id="detail-en-row">
         <div class="detail-label" style="color:#3C3489;font-weight:600">EN</div>
-        <div class="detail-val" id="detail-en" style="white-space:pre-wrap;font-size:12px;line-height:1.6"></div>
+        <div style="flex:1">
+          <div class="detail-val" id="detail-en" style="white-space:pre-wrap;font-size:12px;line-height:1.6"></div>
+          <div id="detail-en-ts" style="font-size:10px;color:#9e9d99;margin-top:3px;text-align:right"></div>
+        </div>
       </div>
       <div class="detail-row" id="detail-assignee-row">
         <div class="detail-label">담당자</div>
@@ -246,7 +255,16 @@ curYear=today.getFullYear(); curMonth=today.getMonth();
 
 function pad(n){return n<10?'0'+n:''+n;}
 function toDateStr(y,m,d){return `${y}-${pad(m+1)}-${pad(d)}`;}
-
+function formatNoteTime(ts){
+  if(!ts) return '';
+  const d=new Date(ts);
+  const now=new Date();
+  const diff=Math.floor((now-d)/1000);
+  if(diff<60) return '방금 전 수정';
+  if(diff<3600) return `${Math.floor(diff/60)}분 전 수정`;
+  if(diff<86400) return `${Math.floor(diff/3600)}시간 전 수정`;
+  return `${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())} 수정`;
+}
 async function loadEvents(){
   const {data,error}=await sb.from('events').select('*');
   if(error){showToast('로드 실패');return;}
@@ -437,10 +455,15 @@ function openDetail(id){
   const platRow=document.getElementById('detail-plat-row');
   document.getElementById('detail-plat').innerHTML=plats.map(p=>PLATFORM_ICONS[p]||`<span>${p}</span>`).join('');
   platRow.style.display=plats.length?'flex':'none';
-  [['kr','detail-kr-row','detail-kr'],['jp','detail-jp-row','detail-jp'],['en','detail-en-row','detail-en']].forEach(([r,rowId,valId])=>{
+  [['kr','detail-kr-row','detail-kr','detail-kr-ts'],
+   ['jp','detail-jp-row','detail-jp','detail-jp-ts'],
+   ['en','detail-en-row','detail-en','detail-en-ts']].forEach(([r,rowId,valId,tsId])=>{
     const txt=ev[`note_${r}`]||'';
+    const updatedAt=ev[`note_${r}_updated_at`];
     document.getElementById(valId).textContent=txt||'(없음)';
     document.getElementById(valId).style.color=txt?'var(--text)':'var(--text-3)';
+    const tsEl=document.getElementById(tsId);
+    if(tsEl) tsEl.textContent=updatedAt?formatNoteTime(updatedAt):'';
   });
   const assigneeRow=document.getElementById('detail-assignee-row');
   if(ev.assignee){document.getElementById('detail-assignee').textContent=ev.assignee;assigneeRow.style.display='flex';}
