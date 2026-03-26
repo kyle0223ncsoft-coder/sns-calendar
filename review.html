@@ -232,7 +232,9 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
         <button class="review-btn approve" id="btn-approve" onclick="selectStatus('approved')">✅ 승인</button>
         <button class="review-btn revise" id="btn-revise" onclick="selectStatus('revision')">🔄 수정 요청</button>
       </div>
-      <input class="review-input" id="reviewer-name" placeholder="검수자 이름"/>
+      <select class="review-input" id="reviewer-name" style="appearance:auto">
+        <option value="">검수자 이름 선택</option>
+      </select>
       <textarea class="review-textarea" id="review-comment" placeholder="코멘트를 입력하세요 (선택)"></textarea>
       <div class="modal-btns" style="margin-top:0">
         <button class="btn-cancel" onclick="closeDetail()">닫기</button>
@@ -492,7 +494,10 @@ function openDetail(id){
     selectedStatus=ev.review_status;
     document.getElementById('btn-approve').classList.toggle('sel',ev.review_status==='approved');
     document.getElementById('btn-revise').classList.toggle('sel',ev.review_status==='revision');
-    document.getElementById('reviewer-name').value=ev.reviewer||'';
+    loadReviewerDropdown().then(()=>{
+      const sel=document.getElementById('reviewer-name');
+      if(sel) sel.value=ev.reviewer||getMyName()||'';
+    });
     document.getElementById('review-comment').value=ev.review_comment||'';
   } else {
     existingEl.innerHTML=ev.review_requested?`<div style="padding:8px 10px;border-radius:var(--rs);background:#FFF9E6;border:1px solid #F59E0B;font-size:12px;color:#92400E;margin-bottom:8px">
@@ -505,7 +510,10 @@ function openDetail(id){
     selectedStatus=null;
     document.getElementById('btn-approve').classList.remove('sel');
     document.getElementById('btn-revise').classList.remove('sel');
-    document.getElementById('reviewer-name').value='';
+    loadReviewerDropdown().then(()=>{
+      const sel=document.getElementById('reviewer-name');
+      if(sel) sel.value=getMyName()||'';
+    });
     document.getElementById('review-comment').value='';
   }
 
@@ -619,21 +627,88 @@ function sendNotification(title, body){
   setTimeout(()=>n.close(), 6000);
 }
 
-function getMyName(){
-  return localStorage.getItem('sns_reviewer_name')||'';
+// ── 멤버 관리 ──
+function getMyName(){ return localStorage.getItem('sns_reviewer_name')||''; }
+function setMyName(name){ localStorage.setItem('sns_reviewer_name', name); }
+
+async function loadMembers(role){
+  const {data} = await sb.from('members').select('*').eq('role', role).order('name');
+  return data||[];
 }
-function setMyName(name){
-  localStorage.setItem('sns_reviewer_name', name);
+
+async function promptMyName(){
+  openMemberModal();
 }
-function promptMyName(){
+
+async function openMemberModal(){
   const cur = getMyName();
-  const name = window.prompt('검수자 이름을 입력해주세요.\n(본인에게 온 검수 요청만 알림을 받아요)', cur||'');
-  if(name !== null) setMyName(name.trim());
+  const reviewers = await loadMembers('reviewer');
+  const listHtml = reviewers.map(m=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-radius:6px;background:#fff;border:1px solid rgba(37,99,235,.15);margin-bottom:6px">
+      <span style="font-size:13px;font-weight:${m.name===cur?'700':'400'};color:${m.name===cur?'#1e3a5f':'#3b6193'}">${m.name===cur?'✓ ':''} ${m.name}</span>
+      <button onclick="selectMemberName('${m.name}')" style="padding:3px 10px;border-radius:12px;border:1.5px solid rgba(37,99,235,.2);background:${m.name===cur?'#2563EB':'#fff'};color:${m.name===cur?'#fff':'#3b6193'};font-size:11px;font-weight:600;cursor:pointer">${m.name===cur?'선택됨':'선택'}</button>
+    </div>`).join('');
+  const modal = document.createElement('div');
+  modal.id = 'member-modal-overlay';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:2000;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:14px;padding:22px;width:320px;max-width:90vw;box-shadow:0 8px 32px rgba(37,99,235,.18)">
+      <div style="font-size:15px;font-weight:700;color:#1e3a5f;margin-bottom:14px">👤 검수자 이름 설정</div>
+      <div style="font-size:12px;color:#7ba3c8;margin-bottom:10px">등록된 검수자 목록</div>
+      <div id="member-list-wrap">${listHtml||'<div style="font-size:12px;color:#7ba3c8;text-align:center;padding:10px">등록된 검수자가 없어요</div>'}</div>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(37,99,235,.1)">
+        <div style="font-size:12px;color:#7ba3c8;margin-bottom:6px">새 이름 등록</div>
+        <div style="display:flex;gap:6px">
+          <input id="new-member-input" style="flex:1;padding:8px 10px;border-radius:6px;border:1.5px solid rgba(37,99,235,.2);font-size:13px;font-family:inherit;outline:none" placeholder="이름 입력">
+          <button onclick="addMemberName('reviewer')" style="padding:8px 14px;border-radius:6px;background:#2563EB;color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer">등록</button>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:14px">
+        <button onclick="closeMemberModal()" style="padding:8px 16px;border-radius:6px;border:1.5px solid rgba(37,99,235,.2);background:#fff;font-size:13px;cursor:pointer;color:#3b6193">닫기</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e=>{ if(e.target===modal) closeMemberModal(); });
 }
+
+function closeMemberModal(){
+  document.getElementById('member-modal-overlay')?.remove();
+}
+
+function selectMemberName(name){
+  setMyName(name);
+  renderMyNameBadge();
+  closeMemberModal();
+  loadReviewerDropdown();
+}
+
+async function addMemberName(role){
+  const input = document.getElementById('new-member-input');
+  const name = input?.value.trim();
+  if(!name){ showToast('이름을 입력해주세요','error'); return; }
+  const {error} = await sb.from('members').upsert({name, role}, {onConflict:'name'});
+  if(error){ showToast('등록 실패: '+error.message,'error'); return; }
+  showToast(`${name} 등록됐어요`,'success');
+  setMyName(name);
+  renderMyNameBadge();
+  closeMemberModal();
+  loadReviewerDropdown();
+}
+
 function renderMyNameBadge(){
   const name = getMyName();
   const el = document.getElementById('my-name-badge');
   if(el) el.textContent = name ? `👤 ${name}` : '👤 이름 설정';
+}
+
+// 검수자 드롭다운 로드 (검수 의견 섹션)
+async function loadReviewerDropdown(){
+  const reviewers = await loadMembers('reviewer');
+  const sel = document.getElementById('reviewer-name');
+  if(!sel) return;
+  const cur = sel.value || getMyName();
+  sel.innerHTML = '<option value="">검수자 이름 선택</option>' +
+    reviewers.map(m=>`<option value="${m.name}" ${m.name===cur?'selected':''}>${m.name}</option>`).join('');
 }
 
 
@@ -671,6 +746,7 @@ sb.channel('events-review').on('postgres_changes',{event:'UPDATE',schema:'public
 }).on('postgres_changes',{event:'INSERT',schema:'public',table:'events'},()=>loadEvents()).subscribe();
 requestNotificationPermission();
 renderMyNameBadge();
+loadReviewerDropdown();
 loadEvents();
 </script>
 </body>

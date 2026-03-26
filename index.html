@@ -712,7 +712,9 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
     </div>
     <div class="form-row">
       <label class="form-label">검수 담당자</label>
-      <input class="form-input" id="review-assignee-input" placeholder="예: 이시현 (비워두면 전체 검수자에게 전송)"/>
+      <select class="form-select" id="review-assignee-select">
+        <option value="">전체 검수자에게</option>
+      </select>
     </div>
     <div class="form-row">
       <label class="form-label">검수 요청 코멘트</label>
@@ -1581,6 +1583,11 @@ function openReviewRequest(){
     const radio=document.querySelector(`input[name="review-type"][value="${ev.review_type}"]`);
     if(radio){radio.checked=true;selectReviewType(ev.review_type);}
   }
+  // 검수자 드롭다운 로드
+  openReviewAssigneeDropdown().then(()=>{
+    const sel=document.getElementById('review-assignee-select');
+    if(sel && ev.review_assignee) sel.value=ev.review_assignee;
+  });
   closeDetail();
   document.getElementById('review-request-modal').classList.add('open');
 }
@@ -1609,7 +1616,7 @@ async function submitReviewRequest(){
   const type=document.querySelector('input[name="review-type"]:checked')?.value;
   if(!type){showToast('검수 유형을 선택해주세요','error');return;}
   const comment=document.getElementById('review-request-comment').value.trim();
-  const reviewAssignee=document.getElementById('review-assignee-input').value.trim();
+  const reviewAssignee=document.getElementById('review-assignee-select').value||null;
   const {error}=await sb.from('events').update({
     review_requested:true,
     review_type:type,
@@ -1699,22 +1706,87 @@ function sendNotification(title, body){
 }
 
 // 내 이름 설정 (마케터)
-function getMyName(){
-  return localStorage.getItem('sns_marketer_name')||'';
+// ── 멤버 관리 ──
+function getMyName(){ return localStorage.getItem('sns_marketer_name')||''; }
+function setMyName(name){ localStorage.setItem('sns_marketer_name', name); }
+
+async function loadMembers(role){
+  const {data} = await sb.from('members').select('*').eq('role', role).order('name');
+  return data||[];
 }
-function setMyName(name){
-  localStorage.setItem('sns_marketer_name', name);
+
+async function promptMyName(){
+  // 이름 입력 모달 열기
+  openMemberModal();
 }
-function promptMyName(){
+
+async function openMemberModal(){
   const cur = getMyName();
-  const name = window.prompt('내 이름을 입력해주세요.\n(알림 수신 대상 필터링에 사용돼요)', cur||'');
-  if(name !== null) setMyName(name.trim());
+  const marketers = await loadMembers('marketer');
+  const existing = marketers.find(m=>m.name===cur);
+  const listHtml = marketers.map(m=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-radius:6px;background:var(--surface);border:1px solid var(--border);margin-bottom:6px">
+      <span style="font-size:13px;font-weight:${m.name===cur?'700':'400'};color:${m.name===cur?'var(--text)':'var(--text-2)'}">${m.name===cur?'✓ ':''} ${m.name}</span>
+      <button onclick="selectMemberName('${m.name}')" style="padding:3px 10px;border-radius:12px;border:1.5px solid var(--border);background:${m.name===cur?'var(--text)':'var(--surface)'};color:${m.name===cur?'#fff':'var(--text-2)'};font-size:11px;font-weight:600;cursor:pointer">${m.name===cur?'선택됨':'선택'}</button>
+    </div>`).join('');
+  const modal = document.createElement('div');
+  modal.id = 'member-modal-overlay';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:2000;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:14px;padding:22px;width:320px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+      <div style="font-size:15px;font-weight:700;margin-bottom:14px">👤 내 이름 설정</div>
+      <div style="font-size:12px;color:var(--text-3);margin-bottom:10px">등록된 마케터 목록</div>
+      <div id="member-list-wrap">${listHtml||'<div style="font-size:12px;color:var(--text-3);text-align:center;padding:10px">등록된 멤버가 없어요</div>'}</div>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+        <div style="font-size:12px;color:var(--text-3);margin-bottom:6px">새 이름 등록</div>
+        <div style="display:flex;gap:6px">
+          <input id="new-member-input" class="form-input" placeholder="이름 입력" style="flex:1;margin:0" value="">
+          <button onclick="addMemberName('marketer')" style="padding:8px 14px;border-radius:var(--rs);background:var(--text);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer">등록</button>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:14px">
+        <button onclick="closeMemberModal()" style="padding:8px 16px;border-radius:var(--rs);border:1.5px solid var(--border);background:var(--surface);font-size:13px;cursor:pointer">닫기</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e=>{ if(e.target===modal) closeMemberModal(); });
 }
-// 헤더에 이름 표시용
+
+function closeMemberModal(){
+  document.getElementById('member-modal-overlay')?.remove();
+}
+
+function selectMemberName(name){
+  setMyName(name);
+  renderMyNameBadge();
+  closeMemberModal();
+}
+
+async function addMemberName(role){
+  const input = document.getElementById('new-member-input');
+  const name = input?.value.trim();
+  if(!name){ showToast('이름을 입력해주세요','error'); return; }
+  const {error} = await sb.from('members').upsert({name, role}, {onConflict:'name'});
+  if(error){ showToast('등록 실패: '+error.message,'error'); return; }
+  showToast(`${name} 등록됐어요`,'success');
+  setMyName(name);
+  renderMyNameBadge();
+  closeMemberModal();
+}
+
 function renderMyNameBadge(){
   const name = getMyName();
   const el = document.getElementById('my-name-badge');
   if(el) el.textContent = name ? `👤 ${name}` : '👤 이름 설정';
+}
+
+// 검수 요청 팝업 — 검수자 드롭다운
+async function openReviewAssigneeDropdown(){
+  const reviewers = await loadMembers('reviewer');
+  const sel = document.getElementById('review-assignee-select');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">전체 검수자에게</option>' +
+    reviewers.map(m=>`<option value="${m.name}">${m.name}</option>`).join('');
 }
 
 
