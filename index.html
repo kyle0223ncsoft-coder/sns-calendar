@@ -207,6 +207,7 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
       <div class="chip en"   onclick="toggleFilter('en',this)">EN 단독</div>
     </div>
     <button class="btn-add" onclick="openAdd()">+ 소재 추가</button>
+    <button onclick="promptMyName();renderMyNameBadge();" id="my-name-badge" style="padding:6px 12px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;cursor:pointer;color:var(--text-2)">👤 이름 설정</button>
     <button class="btn-help" onclick="openHelp()">?</button>
   </div>
 </header>
@@ -708,6 +709,10 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
           ✍️ 투고문
         </label>
       </div>
+    </div>
+    <div class="form-row">
+      <label class="form-label">검수 담당자</label>
+      <input class="form-input" id="review-assignee-input" placeholder="예: 이시현 (비워두면 전체 검수자에게 전송)"/>
     </div>
     <div class="form-row">
       <label class="form-label">검수 요청 코멘트</label>
@@ -1604,10 +1609,12 @@ async function submitReviewRequest(){
   const type=document.querySelector('input[name="review-type"]:checked')?.value;
   if(!type){showToast('검수 유형을 선택해주세요','error');return;}
   const comment=document.getElementById('review-request-comment').value.trim();
+  const reviewAssignee=document.getElementById('review-assignee-input').value.trim();
   const {error}=await sb.from('events').update({
     review_requested:true,
     review_type:type,
     review_request_comment:comment,
+    review_assignee:reviewAssignee||null,
     review_status:null,
     review_comment:null,
     reviewer:null,
@@ -1676,17 +1683,14 @@ function showToast(msg, type='default'){
 // 브라우저 알림
 function requestNotificationPermission(){
   if(!('Notification' in window)) return;
-  if(Notification.permission==='default'){
-    Notification.requestPermission();
-  }
+  if(Notification.permission==='default') Notification.requestPermission();
 }
 
-function sendNotification(title, body, icon=''){
+function sendNotification(title, body){
   if(!('Notification' in window)||Notification.permission!=='granted') return;
   const n = new Notification(title, {
     body,
-    icon: icon || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="6" fill="%231a1a18"/><rect x="6" y="10" width="20" height="16" rx="2" fill="white"/><rect x="6" y="10" width="20" height="6" rx="2" fill="%23378ADD"/></svg>',
-    badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="6" fill="%231a1a18"/></svg>',
+    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="6" fill="%231a1a18"/><rect x="6" y="10" width="20" height="16" rx="2" fill="white"/><rect x="6" y="10" width="20" height="6" rx="2" fill="%23378ADD"/></svg>',
     tag: 'sns-calendar',
     requireInteraction: false
   });
@@ -1694,32 +1698,57 @@ function sendNotification(title, body, icon=''){
   setTimeout(()=>n.close(), 6000);
 }
 
+// 내 이름 설정 (마케터)
+function getMyName(){
+  return localStorage.getItem('sns_marketer_name')||'';
+}
+function setMyName(name){
+  localStorage.setItem('sns_marketer_name', name);
+}
+function promptMyName(){
+  const cur = getMyName();
+  const name = window.prompt('내 이름을 입력해주세요.\n(알림 수신 대상 필터링에 사용돼요)', cur||'');
+  if(name !== null) setMyName(name.trim());
+}
+// 헤더에 이름 표시용
+function renderMyNameBadge(){
+  const name = getMyName();
+  const el = document.getElementById('my-name-badge');
+  if(el) el.textContent = name ? `👤 ${name}` : '👤 이름 설정';
+}
+
 
 
 sb.channel('events-changes').on('postgres_changes',{event:'UPDATE',schema:'public',table:'events'},(payload)=>{
-  // 변경된 레코드를 직접 받아서 알림 감지
   if(payload.new && payload.old){
     const oldEv = payload.old;
     const newEv = payload.new;
-    if(oldEv.review_status !== 'revision' && newEv.review_status === 'revision'){
-      sendNotification(
-        `🔄 수정 요청 — ${newEv.name}`,
-        newEv.review_comment ? `"${newEv.review_comment}"` : '검수자가 수정을 요청했어요.'
-      );
-      showToast(`🔄 "${newEv.name}" 수정 요청이 왔어요`,'error');
-    }
-    if(oldEv.review_status !== 'approved' && newEv.review_status === 'approved'){
-      sendNotification(
-        `✅ 승인됨 — ${newEv.name}`,
-        newEv.reviewer ? `${newEv.reviewer}님이 승인했어요.` : '검수자가 승인했어요.'
-      );
-      showToast(`✅ "${newEv.name}" 승인됐어요`,'success');
+    const myName = getMyName();
+    // 담당자 필터: 내 이름이 설정돼 있으면 assignee에 포함된 경우만 알림
+    const assignee = newEv.assignee||'';
+    const isMyEvent = !myName || assignee.includes(myName);
+    if(isMyEvent){
+      if(oldEv.review_status !== 'revision' && newEv.review_status === 'revision'){
+        sendNotification(
+          `🔄 수정 요청 — ${newEv.name}`,
+          newEv.review_comment ? `"${newEv.review_comment}"` : '검수자가 수정을 요청했어요.'
+        );
+        showToast(`🔄 "${newEv.name}" 수정 요청이 왔어요`,'error');
+      }
+      if(oldEv.review_status !== 'approved' && newEv.review_status === 'approved'){
+        sendNotification(
+          `✅ 승인됨 — ${newEv.name}`,
+          newEv.reviewer ? `${newEv.reviewer}님이 승인했어요.` : '검수자가 승인했어요.'
+        );
+        showToast(`✅ "${newEv.name}" 승인됐어요`,'success');
+      }
     }
   }
   loadEvents();
 }).on('postgres_changes',{event:'INSERT',schema:'public',table:'events'},()=>loadEvents()).subscribe();
 
 requestNotificationPermission();
+renderMyNameBadge();
 loadEvents();
 
 // 이미지/영상 URL 실시간 미리보기 (이벤트 위임)
