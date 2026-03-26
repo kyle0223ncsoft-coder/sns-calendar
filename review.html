@@ -265,13 +265,6 @@ function formatNoteTime(ts){
   if(diff<86400) return `${Math.floor(diff/3600)}시간 전 수정`;
   return `${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())} 수정`;
 }
-async function loadEvents(){
-  const {data,error}=await sb.from('events').select('*');
-  if(error){showToast('로드 실패');return;}
-  events=data||[];
-  renderCounts();
-  render();
-}
 
 function renderCounts(){
   const requested=events.filter(e=>e.review_requested&&!e.review_status).length;
@@ -581,10 +574,64 @@ async function submitReview(){
   closeDetail();
 }
 
-function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+function showToast(msg, type='default'){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.style.background = type==='success'?'#16a34a' : type==='error'?'#dc2626' : 'var(--text)';
+  t.classList.remove('show');
+  void t.offsetWidth;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
 
-// 실시간 동기화
+function requestNotificationPermission(){
+  if(!('Notification' in window)) return;
+  if(Notification.permission==='default') Notification.requestPermission();
+}
+
+function sendNotification(title, body){
+  if(!('Notification' in window)||Notification.permission!=='granted') return;
+  const n = new Notification(title, {
+    body,
+    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="6" fill="%232563EB"/><rect x="6" y="10" width="20" height="16" rx="2" fill="white"/><rect x="6" y="10" width="20" height="6" rx="2" fill="%2393C5FD"/></svg>',
+    tag: 'sns-calendar-review',
+    requireInteraction: false
+  });
+  n.onclick = () => { window.focus(); n.close(); };
+  setTimeout(()=>n.close(), 6000);
+}
+
+let prevEventsMap = {};
+
+function checkRequestChanges(newEvents){
+  newEvents.forEach(ev => {
+    const prev = prevEventsMap[ev.id];
+    if(!prev) return;
+    // 새 검수 요청
+    if(!prev.review_requested && ev.review_requested && !ev.review_status){
+      const typeLabel = ev.review_type ? (ev.review_type==='소재'?'🎨 소재':'✍️ 투고문') : '';
+      sendNotification(
+        `🔔 검수 요청 — ${ev.name}`,
+        [typeLabel, ev.review_request_comment].filter(Boolean).join(' · ') || '마케터가 검수를 요청했어요.'
+      );
+      showToast(`🔔 "${ev.name}" 검수 요청이 왔어요`, 'default');
+    }
+  });
+  prevEventsMap = Object.fromEntries(newEvents.map(e=>[e.id,e]));
+}
+
+async function loadEvents(){
+  const {data,error}=await sb.from('events').select('*');
+  if(error){showToast('로드 실패','error');return;}
+  const newEvents=data||[];
+  if(Object.keys(prevEventsMap).length > 0) checkRequestChanges(newEvents);
+  else prevEventsMap = Object.fromEntries(newEvents.map(e=>[e.id,e]));
+  events=newEvents;
+  renderCounts();
+  render();
+}// 실시간 동기화
 sb.channel('events-review').on('postgres_changes',{event:'*',schema:'public',table:'events'},()=>loadEvents()).subscribe();
+requestNotificationPermission();
 loadEvents();
 </script>
 </body>
