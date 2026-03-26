@@ -547,9 +547,15 @@ function renderXCard(region,ev){
   const xImageArea=document.getElementById('x-image-area');
   const mediaUrl=(ev[`media_url_${region}`]||ev.media_url||'');
   const media=resolveMediaUrl(mediaUrl);
-  if(media&&media.type==='image'){xImageArea.innerHTML=`<img src="${media.url}" style="width:100%;border-radius:10px;display:block" onerror="this.parentElement.innerHTML='<div class=\\'x-image-placeholder\\'>이미지를 불러올 수 없어요</div>'"/>`;}
-  else if(media&&media.type==='youtube'){xImageArea.innerHTML=`<div style="position:relative"><img src="${media.thumb}" style="width:100%;border-radius:10px;display:block"/><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:44px;height:44px;background:rgba(0,0,0,0.7);border-radius:50%;display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg></div></div>`;}
-  else{xImageArea.innerHTML=`<div class="x-image-placeholder"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#536471" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg><span>이미지 / 영상 첨부 영역</span></div>`;}
+  const isVideo=(ev.media_type||'image')==='video';
+  if(isVideo&&media){
+    const thumb=media.type==='youtube'
+      ?`<img src="${media.thumb}" style="width:100%;border-radius:10px 10px 0 0;display:block" onerror="this.style.display='none'"/>`
+      :`<div style="background:#1a1a18;height:90px;border-radius:10px 10px 0 0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px">🎬</div>`;
+    xImageArea.innerHTML=`<div style="border-radius:10px;overflow:hidden;border:1px solid #cfd9de;margin-bottom:10px">${thumb}<a href="${mediaUrl}" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;background:#0f1419;color:#fff;font-size:13px;font-weight:600;text-decoration:none">▶ 영상 보러가기</a></div>`;
+  } else if(media&&media.type==='image'){xImageArea.innerHTML=`<img src="${media.url}" style="width:100%;border-radius:10px;display:block;margin-bottom:10px" onerror="this.parentElement.innerHTML='<div class=\'x-image-placeholder\'>이미지를 불러올 수 없어요</div>'"/>`;
+  } else if(media&&media.type==='youtube'){xImageArea.innerHTML=`<div style="position:relative;margin-bottom:10px"><img src="${media.thumb}" style="width:100%;border-radius:10px;display:block"/><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:44px;height:44px;background:rgba(0,0,0,0.7);border-radius:50%;display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg></div></div>`;
+  } else{xImageArea.innerHTML=`<div class="x-image-placeholder"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#536471" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg><span>이미지 / 영상 첨부 영역</span></div>`;}
   document.getElementById('x-meta').textContent=ev.start_date+(ev.start_date!==ev.end_date?` ~ ${ev.end_date}`:'')+' · X';
 }
 

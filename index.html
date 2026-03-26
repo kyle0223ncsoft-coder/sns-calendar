@@ -115,7 +115,10 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
 .detail-tab{padding:8px 16px;font-size:13px;font-weight:500;font-family:inherit;background:none;border:none;border-bottom:2px solid transparent;color:var(--text-3);cursor:pointer;transition:all .15s}
 .detail-tab.active{color:var(--text);border-bottom-color:var(--text)}
 .detail-tab:hover{color:var(--text-2)}
-/* note region tabs */
+/* media type toggle */
+.media-type-btn{padding:5px 14px;font-size:12px;font-weight:500;font-family:inherit;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-3);cursor:pointer;transition:all .15s}
+.media-type-btn.active[data-type="image"]{border-color:#378ADD;background:#E6F1FB;color:#185FA5}
+.media-type-btn.active[data-type="video"]{border-color:#D85A30;background:#FAECE7;color:#993C1D}
 .note-tab-btn{padding:3px 10px;font-size:11px;font-weight:600;font-family:inherit;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-3);cursor:pointer;transition:all .15s}
 .note-tab-btn:hover{border-color:rgba(0,0,0,.2);color:var(--text-2)}
 .note-tab-btn.active[data-region="kr"]{border-color:#378ADD;background:#E6F1FB;color:#185FA5}
@@ -323,13 +326,22 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
         </div>
         <div id="media-guide" style="display:none;background:#F8F7F4;border-radius:8px;padding:12px;font-size:12px;color:var(--text-2);line-height:1.8;margin-bottom:8px">
           <div style="font-weight:600;color:var(--text);margin-bottom:6px">📎 URL 입력 방법</div>
-          <div><b>구글 드라이브</b></div>
-          <div style="margin-bottom:6px">① 드라이브에서 파일 우클릭 → <b>공유</b> 클릭<br>② 링크 설정을 <b>"링크가 있는 모든 사용자 — 뷰어"</b>로 변경<br>③ 링크 복사 후 여기에 붙여넣기<br>④ 입력 후 다시 <b>비공개로 변경해도</b> 캘린더 내 미리보기는 유지돼요</div>
+          <div><b>구글 드라이브 — 이미지</b></div>
+          <div style="margin-bottom:6px">① 드라이브에서 이미지 파일 우클릭 → <b>공유</b> 클릭<br>② 링크 설정을 <b>"링크가 있는 모든 사용자 — 뷰어"</b>로 변경<br>③ 링크 복사 후 붙여넣기 → 유형을 <b>이미지</b>로 선택<br>④ 입력 후 다시 비공개로 변경해도 미리보기는 유지돼요</div>
+          <div><b>구글 드라이브 — 동영상</b></div>
+          <div style="margin-bottom:6px">① 위와 동일하게 공유 링크 복사 후 붙여넣기 → 유형을 <b>동영상</b>으로 선택<br>② 동영상은 직접 재생되지 않고, 미리보기에 <b>"▶ 영상 보러가기"</b> 링크로 표시돼요</div>
           <div><b>YouTube</b></div>
-          <div style="margin-bottom:6px">① 유튜브 영상 페이지에서 <b>공유 → 링크 복사</b><br>② 붙여넣으면 썸네일이 자동으로 표시돼요</div>
+          <div style="margin-bottom:6px">① 유튜브 링크 붙여넣기 → 유형을 <b>동영상</b>으로 선택<br>② 썸네일 + 링크 버튼으로 표시돼요</div>
           <div><b>기타 이미지</b></div>
-          <div>이미지 파일 직접 링크 (jpg, png, webp 등) 붙여넣기</div>
+          <div>이미지 직접 링크 (jpg, png, webp 등) 붙여넣기 → 유형을 <b>이미지</b>로 선택</div>
         </div>
+
+        <!-- 이미지/동영상 유형 토글 -->
+        <div style="display:flex;gap:6px;margin-bottom:8px" id="media-type-toggle">
+          <button type="button" class="media-type-btn active" data-type="image" onclick="selectMediaType('image',this)">🖼️ 이미지</button>
+          <button type="button" class="media-type-btn" data-type="video" onclick="selectMediaType('video',this)">🎬 동영상</button>
+        </div>
+        <input type="hidden" id="f-media-type" value="image"/>
 
         <!-- 공통 여부 체크박스 -->
         <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:var(--text-2);padding:8px 10px;background:var(--bg);border-radius:var(--rs);margin-bottom:8px;user-select:none">
@@ -339,7 +351,7 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
 
         <!-- 공통 URL (체크 시) -->
         <div id="media-shared-field">
-          <input class="form-input" id="f-media-url" placeholder="공통 이미지 / 영상 URL"/>
+          <input class="form-input" id="f-media-url" placeholder="URL 붙여넣기"/>
           <div id="f-media-preview" style="margin-top:6px;display:none;border-radius:8px;overflow:hidden"></div>
         </div>
 
@@ -347,17 +359,17 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
         <div id="media-per-region-fields" style="display:none">
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
             <span style="font-size:11px;font-weight:600;color:#185FA5;min-width:24px">KR</span>
-            <input class="form-input" id="f-media-url-kr" placeholder="KR 이미지 / 영상 URL" style="flex:1"/>
+            <input class="form-input" id="f-media-url-kr" placeholder="KR URL" style="flex:1"/>
           </div>
           <div id="f-media-preview-kr" style="margin-bottom:8px;display:none;border-radius:8px;overflow:hidden"></div>
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
             <span style="font-size:11px;font-weight:600;color:#0F6E56;min-width:24px">JP</span>
-            <input class="form-input" id="f-media-url-jp" placeholder="JP 이미지 / 영상 URL" style="flex:1"/>
+            <input class="form-input" id="f-media-url-jp" placeholder="JP URL" style="flex:1"/>
           </div>
           <div id="f-media-preview-jp" style="margin-bottom:8px;display:none;border-radius:8px;overflow:hidden"></div>
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
             <span style="font-size:11px;font-weight:600;color:#3C3489;min-width:24px">EN</span>
-            <input class="form-input" id="f-media-url-en" placeholder="EN 이미지 / 영상 URL" style="flex:1"/>
+            <input class="form-input" id="f-media-url-en" placeholder="EN URL" style="flex:1"/>
           </div>
           <div id="f-media-preview-en" style="display:none;border-radius:8px;overflow:hidden"></div>
         </div>
@@ -989,6 +1001,10 @@ function openEdit(id){
     document.getElementById('f-assignee').value=ev.assignee||'';
     document.getElementById('f-media-url').value=ev.media_url||'';
     renderMediaPreview(ev.media_url||'', 'f-media-preview');
+    // media_type 복원
+    const savedType=ev.media_type||'image';
+    document.getElementById('f-media-type').value=savedType;
+    selectMediaType(savedType, null);
     // 권역별 URL 있으면 개별 모드, 없으면 공통 모드
     const hasPerRegion = ev.media_url_kr||ev.media_url_jp||ev.media_url_en;
     document.getElementById('f-media-shared').checked=!hasPerRegion;
@@ -1024,6 +1040,7 @@ async function saveEvent(){
     const start=document.getElementById('f-start').value;
     const end=document.getElementById('f-end').value;
     const isShared=document.getElementById('f-media-shared').checked;
+    const mediaType=document.getElementById('f-media-type').value||'image';
     const now=new Date().toISOString();
     const prevEv=editId?events.find(e=>e.id===editId):null;
     const newNoteKr=document.getElementById('f-note-kr').value.trim();
@@ -1034,7 +1051,7 @@ async function saveEvent(){
       note_kr_updated_at:newNoteKr!==(prevEv?.note_kr||'')?now:(prevEv?.note_kr_updated_at||null),
       note_jp_updated_at:newNoteJp!==(prevEv?.note_jp||'')?now:(prevEv?.note_jp_updated_at||null),
       note_en_updated_at:newNoteEn!==(prevEv?.note_en||'')?now:(prevEv?.note_en_updated_at||null),
-      assignee:document.getElementById('f-assignee').value.trim(),media_url:isShared?document.getElementById('f-media-url').value.trim():'',media_url_kr:isShared?'':document.getElementById('f-media-url-kr').value.trim(),media_url_jp:isShared?'':document.getElementById('f-media-url-jp').value.trim(),media_url_en:isShared?'':document.getElementById('f-media-url-en').value.trim(),is_highlight:false};
+      assignee:document.getElementById('f-assignee').value.trim(),media_type:mediaType,media_url:isShared?document.getElementById('f-media-url').value.trim():'',media_url_kr:isShared?'':document.getElementById('f-media-url-kr').value.trim(),media_url_jp:isShared?'':document.getElementById('f-media-url-jp').value.trim(),media_url_en:isShared?'':document.getElementById('f-media-url-en').value.trim(),is_highlight:false};
   }
   let error;
   if(editId){ ({error}=await sb.from('events').update(payload).eq('id',editId)); }
@@ -1086,16 +1103,38 @@ function renderMediaPreview(url, containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
   const media = resolveMediaUrl(url);
+  const mediaType = document.getElementById('f-media-type')?.value || 'image';
   if (!media) { container.style.display = 'none'; container.innerHTML = ''; return; }
-  if (media.type === 'image') {
-    container.innerHTML = `<img src="${media.url}" style="width:100%;border-radius:8px;display:block" onerror="this.parentElement.innerHTML='<div style=\\'padding:10px;font-size:12px;color:#DC2626\\'>이미지를 불러올 수 없어요. URL을 확인해주세요.</div>'"/>`;
-  } else if (media.type === 'youtube') {
-    container.innerHTML = `<div style="position:relative"><img src="${media.thumb}" style="width:100%;border-radius:8px;display:block" onerror="this.src='https://img.youtube.com/vi/${media.id}/hqdefault.jpg'"/><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:44px;height:44px;background:rgba(0,0,0,0.7);border-radius:50%;display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg></div></div>`;
+
+  if (mediaType === 'video') {
+    const thumb = media.type === 'youtube'
+      ? `<img src="${media.thumb}" style="width:100%;border-radius:8px 8px 0 0;display:block" onerror="this.style.display='none'"/>`
+      : `<div style="background:#1a1a18;height:90px;border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px">🎬</div>`;
+    container.innerHTML = `<div style="border-radius:8px;overflow:hidden;border:1px solid var(--border)">${thumb}<a href="${url}" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;background:var(--text);color:#fff;font-size:12px;font-weight:600;text-decoration:none">▶ 영상 보러가기</a></div>`;
+  } else {
+    if (media.type === 'image') {
+      container.innerHTML = `<img src="${media.url}" style="width:100%;border-radius:8px;display:block" onerror="this.parentElement.innerHTML='<div style=\\'padding:10px;font-size:12px;color:#DC2626\\'>이미지를 불러올 수 없어요. URL을 확인해주세요.</div>'"/>`;
+    } else if (media.type === 'youtube') {
+      container.innerHTML = `<div style="position:relative"><img src="${media.thumb}" style="width:100%;border-radius:8px;display:block" onerror="this.src='https://img.youtube.com/vi/${media.id}/hqdefault.jpg'"/><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:44px;height:44px;background:rgba(0,0,0,0.7);border-radius:50%;display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg></div></div>`;
+    }
   }
   container.style.display = 'block';
 }
 
 let currentXRegion = 'kr';
+
+function selectMediaType(type, btn){
+  document.getElementById('f-media-type').value=type;
+  document.querySelectorAll('.media-type-btn').forEach(b=>b.classList.toggle('active',b.dataset.type===type));
+  // 현재 입력된 URL로 미리보기 갱신
+  const isShared=document.getElementById('f-media-shared').checked;
+  if(isShared) renderMediaPreview(document.getElementById('f-media-url').value,'f-media-preview');
+  else {
+    renderMediaPreview(document.getElementById('f-media-url-kr').value,'f-media-preview-kr');
+    renderMediaPreview(document.getElementById('f-media-url-jp').value,'f-media-preview-jp');
+    renderMediaPreview(document.getElementById('f-media-url-en').value,'f-media-preview-en');
+  }
+}
 
 function toggleNoteHint(){
   const el=document.getElementById('note-hint');
@@ -1117,6 +1156,8 @@ function resetMediaFields(){
   document.getElementById('f-media-url-kr').value='';
   document.getElementById('f-media-url-jp').value='';
   document.getElementById('f-media-url-en').value='';
+  document.getElementById('f-media-type').value='image';
+  selectMediaType('image', null);
   ['f-media-preview','f-media-preview-kr','f-media-preview-jp','f-media-preview-en'].forEach(id=>{
     const el=document.getElementById(id);
     if(el){el.style.display='none';el.innerHTML='';}
@@ -1188,7 +1229,14 @@ function renderXCard(region) {
   const xImageArea = document.getElementById('x-image-area');
   const mediaUrl = getMediaUrlForRegion(ev, region);
   const media = resolveMediaUrl(mediaUrl);
-  if (media && media.type === 'image') {
+  const isVideo = (ev.media_type || 'image') === 'video';
+
+  if (isVideo && media) {
+    const thumb = media.type === 'youtube'
+      ? `<img src="${media.thumb}" style="width:100%;border-radius:10px 10px 0 0;display:block" onerror="this.style.display='none'"/>`
+      : `<div style="background:#1a1a18;height:90px;border-radius:10px 10px 0 0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px">🎬</div>`;
+    xImageArea.innerHTML = `<div style="border-radius:10px;overflow:hidden;border:1px solid #cfd9de;margin-bottom:10px">${thumb}<a href="${mediaUrl}" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;background:#0f1419;color:#fff;font-size:13px;font-weight:600;text-decoration:none;font-family:'Noto Sans KR',sans-serif">▶ 영상 보러가기</a></div>`;
+  } else if (media && media.type === 'image') {
     xImageArea.innerHTML = `<img src="${media.url}" style="width:100%;border-radius:10px;display:block;margin-bottom:10px" onerror="this.parentElement.innerHTML='<div class=\\'x-image-placeholder\\'>이미지를 불러올 수 없어요</div>'"/>`;
   } else if (media && media.type === 'youtube') {
     xImageArea.innerHTML = `<div style="position:relative;margin-bottom:10px"><img src="${media.thumb}" style="width:100%;border-radius:10px;display:block" onerror="this.src='https://img.youtube.com/vi/${media.id}/hqdefault.jpg'"/><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:44px;height:44px;background:rgba(0,0,0,0.7);border-radius:50%;display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg></div></div>`;
