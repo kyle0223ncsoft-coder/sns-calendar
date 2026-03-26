@@ -1016,9 +1016,14 @@ function render(){
               const badge=regionBadge[ev.region];
               const badgeHtml=badge?`<span style="font-size:10px;font-weight:700;background:rgba(255,255,255,0.35);color:inherit;border-radius:3px;padding:0 4px;margin-right:3px;letter-spacing:0.3px;flex-shrink:0">${badge}</span>`:'';
               const rvStatus=ev.review_status||(ev.review_requested?'requested':null);
-              const dotColor=rvStatus==='approved'?'#16a34a':rvStatus==='revision'?'#dc2626':rvStatus==='requested'?'#F59E0B':null;
-              const dotHtml=dotColor?`<span style="width:7px;height:7px;border-radius:50%;background:${dotColor};display:inline-block;margin-right:3px;flex-shrink:0;vertical-align:middle"></span>`:'';
-              bar.innerHTML=`<span style="display:inline-flex;align-items:center;gap:2px;vertical-align:middle;max-width:100%;overflow:hidden">${dotHtml}${badgeHtml}<span style="display:inline-flex;align-items:center;gap:3px">${icons}</span>${icons?' ':''}${ev.name}</span>`;
+              const rvBadge=rvStatus==='approved'
+                ? `<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#16a34a;color:#fff;flex-shrink:0;margin-right:2px">승인</span>`
+                : rvStatus==='revision'
+                ? `<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#dc2626;color:#fff;flex-shrink:0;margin-right:2px">수정요청</span>`
+                : rvStatus==='requested'
+                ? `<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#F59E0B;color:#fff;flex-shrink:0;margin-right:2px">검수중</span>`
+                : '';
+              bar.innerHTML=`<span style="display:inline-flex;align-items:center;gap:2px;vertical-align:middle;max-width:100%;overflow:hidden">${rvBadge}${badgeHtml}<span style="display:inline-flex;align-items:center;gap:3px">${icons}</span>${icons?' ':''}${ev.name}</span>`;
             } else {
               bar.innerHTML='&nbsp;';
             }
@@ -1723,17 +1728,18 @@ async function promptMyName(){
 async function openMemberModal(){
   const cur = getMyName();
   const marketers = await loadMembers('marketer');
-  const existing = marketers.find(m=>m.name===cur);
   const listHtml = marketers.map(m=>`
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-radius:6px;background:var(--surface);border:1px solid var(--border);margin-bottom:6px">
-      <span style="font-size:13px;font-weight:${m.name===cur?'700':'400'};color:${m.name===cur?'var(--text)':'var(--text-2)'}">${m.name===cur?'✓ ':''} ${m.name}</span>
-      <button onclick="selectMemberName('${m.name}')" style="padding:3px 10px;border-radius:12px;border:1.5px solid var(--border);background:${m.name===cur?'var(--text)':'var(--surface)'};color:${m.name===cur?'#fff':'var(--text-2)'};font-size:11px;font-weight:600;cursor:pointer">${m.name===cur?'선택됨':'선택'}</button>
+    <div style="display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:6px;background:var(--surface);border:1px solid var(--border);margin-bottom:6px">
+      <span style="font-size:13px;font-weight:${m.name===cur?'700':'400'};color:${m.name===cur?'var(--text)':'var(--text-2)'};flex:1">${m.name===cur?'✓ ':''} ${m.name}</span>
+      <button onclick="selectMemberName('${m.name}')" style="padding:3px 9px;border-radius:12px;border:1.5px solid var(--border);background:${m.name===cur?'var(--text)':'var(--surface)'};color:${m.name===cur?'#fff':'var(--text-2)'};font-size:11px;font-weight:600;cursor:pointer">${m.name===cur?'선택됨':'선택'}</button>
+      <button onclick="editMemberName('${m.id}','${m.name}','marketer')" style="padding:3px 9px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);font-size:11px;font-weight:600;cursor:pointer">수정</button>
+      <button onclick="deleteMember('${m.id}','${m.name}','marketer')" style="padding:3px 9px;border-radius:12px;border:1.5px solid #fca5a5;background:#fff5f5;color:#dc2626;font-size:11px;font-weight:600;cursor:pointer">삭제</button>
     </div>`).join('');
   const modal = document.createElement('div');
   modal.id = 'member-modal-overlay';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:2000;display:flex;align-items:center;justify-content:center';
   modal.innerHTML = `
-    <div style="background:#fff;border-radius:14px;padding:22px;width:320px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+    <div style="background:#fff;border-radius:14px;padding:22px;width:340px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,.18)">
       <div style="font-size:15px;font-weight:700;margin-bottom:14px">👤 내 이름 설정</div>
       <div style="font-size:12px;color:var(--text-3);margin-bottom:10px">등록된 마케터 목록</div>
       <div id="member-list-wrap">${listHtml||'<div style="font-size:12px;color:var(--text-3);text-align:center;padding:10px">등록된 멤버가 없어요</div>'}</div>
@@ -1750,6 +1756,29 @@ async function openMemberModal(){
     </div>`;
   document.body.appendChild(modal);
   modal.addEventListener('click', e=>{ if(e.target===modal) closeMemberModal(); });
+}
+
+async function editMemberName(id, oldName, role){
+  const newName = window.prompt('새 이름을 입력해주세요', oldName);
+  if(!newName || newName.trim()===oldName) return;
+  const {error} = await sb.from('members').update({name:newName.trim()}).eq('id',id);
+  if(error){ showToast('수정 실패: '+error.message,'error'); return; }
+  if(getMyName()===oldName) setMyName(newName.trim());
+  showToast(`${oldName} → ${newName.trim()} 수정됐어요`,'success');
+  renderMyNameBadge();
+  closeMemberModal();
+  openMemberModal();
+}
+
+async function deleteMember(id, name, role){
+  if(!confirm(`"${name}" 을(를) 삭제할까요?`)) return;
+  const {error} = await sb.from('members').delete().eq('id',id);
+  if(error){ showToast('삭제 실패: '+error.message,'error'); return; }
+  if(getMyName()===name) setMyName('');
+  showToast(`${name} 삭제됐어요`,'success');
+  renderMyNameBadge();
+  closeMemberModal();
+  openMemberModal();
 }
 
 function closeMemberModal(){
@@ -1796,9 +1825,9 @@ sb.channel('events-changes').on('postgres_changes',{event:'UPDATE',schema:'publi
     const oldEv = payload.old;
     const newEv = payload.new;
     const myName = getMyName();
-    // 담당자 필터: 내 이름이 설정돼 있으면 assignee에 포함된 경우만 알림
-    const assignee = newEv.assignee||'';
-    const isMyEvent = !myName || assignee.includes(myName);
+    // 담당 마케터 필터: review_marketer가 있으면 그 사람만, 없으면 전체
+    const reviewMarketer = newEv.review_marketer||'';
+    const isMyEvent = !myName || !reviewMarketer || reviewMarketer === myName;
     if(isMyEvent){
       if(oldEv.review_status !== 'revision' && newEv.review_status === 'revision'){
         sendNotification(
