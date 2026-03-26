@@ -502,7 +502,7 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
     <div class="detail-actions">
       <button class="btn-detail-del" onclick="deleteFromDetail()">삭제</button>
       <button class="btn-detail-copy" onclick="copyEvent()">복사해서 추가</button>
-      <button id="btn-request-review" class="btn-detail-edit" onclick="toggleReviewRequest()" style="background:#F59E0B;border-color:#F59E0B">🔔 검수 요청</button>
+      <button id="btn-request-review" class="btn-detail-edit" onclick="openReviewRequest()" style="background:#F59E0B;border-color:#F59E0B">🔔 검수 요청</button>
       <button class="btn-detail-edit" onclick="editFromDetail()">수정</button>
     </div>
   </div>
@@ -572,6 +572,37 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- Review Request Modal -->
+<div class="modal-bg" id="review-request-modal">
+  <div class="modal" style="max-width:380px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+      <div class="modal-title" style="margin:0">🔔 검수 요청</div>
+      <button onclick="closeReviewRequest()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-3);line-height:1">×</button>
+    </div>
+    <div class="form-row">
+      <label class="form-label">검수 유형 *</label>
+      <div style="display:flex;gap:8px">
+        <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border:1.5px solid var(--border);border-radius:var(--rs);cursor:pointer;font-size:13px;font-weight:500;transition:all .15s" id="type-label-소재">
+          <input type="radio" name="review-type" value="소재" onchange="selectReviewType('소재')" style="display:none">
+          🎨 소재
+        </label>
+        <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border:1.5px solid var(--border);border-radius:var(--rs);cursor:pointer;font-size:13px;font-weight:500;transition:all .15s" id="type-label-투고문">
+          <input type="radio" name="review-type" value="투고문" onchange="selectReviewType('투고문')" style="display:none">
+          ✍️ 투고문
+        </label>
+      </div>
+    </div>
+    <div class="form-row">
+      <label class="form-label">검수 요청 코멘트</label>
+      <textarea class="form-textarea" id="review-request-comment" placeholder="검수자에게 전달할 내용을 입력하세요 (선택)" style="min-height:80px"></textarea>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeReviewRequest()">취소</button>
+      <button class="btn-save" onclick="submitReviewRequest()" style="background:#F59E0B;border-color:#F59E0B">검수 요청 전송</button>
+    </div>
+  </div>
+</div>
 
 <script>
 const SUPABASE_URL = 'https://ahetdkarbdrmsuahawag.supabase.co';
@@ -1214,8 +1245,10 @@ function renderReviewStatus(ev){
   if(!el) return;
   if(ev.review_requested && !ev.review_status){
     // 검수 대기 중
-    el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#FFF9E6;border:1px solid #F59E0B;border-radius:var(--rs);font-size:12px;color:#92400E;margin-bottom:8px">
-      <span>🔔</span><span style="font-weight:600">검수 요청 중</span><span style="color:#B45309;font-size:11px">${ev.review_requested_at?formatNoteTime(ev.review_requested_at):''}</span>
+    const typeTag=ev.review_type?`<span style="background:#F59E0B;color:#fff;font-size:10px;font-weight:600;padding:1px 7px;border-radius:20px;margin-left:4px">${ev.review_type==='소재'?'🎨 소재':'✍️ 투고문'}</span>`:'';
+    el.innerHTML=`<div style="padding:8px 10px;background:#FFF9E6;border:1px solid #F59E0B;border-radius:var(--rs);font-size:12px;color:#92400E;margin-bottom:8px">
+      <div style="display:flex;align-items:center;margin-bottom:${ev.review_request_comment?'4px':'0'}"><span style="font-weight:600">🔔 검수 요청 중</span>${typeTag}<span style="color:#B45309;font-size:11px;margin-left:auto">${ev.review_requested_at?formatNoteTime(ev.review_requested_at):''}</span></div>
+      ${ev.review_request_comment?`<div style="color:#78350F">${ev.review_request_comment}</div>`:''}
     </div>`;
     if(btn){btn.textContent='🔕 검수 요청 취소';btn.style.background='#6b7280';btn.style.borderColor='#6b7280';}
   } else if(ev.review_status==='approved'){
@@ -1238,15 +1271,75 @@ function renderReviewStatus(ev){
   }
 }
 
-async function toggleReviewRequest(){
+function openReviewRequest(){
   const ev=events.find(e=>e.id===detailId); if(!ev) return;
   const isRequested=ev.review_requested&&!ev.review_status;
-  const payload=isRequested
-    ?{review_requested:false, review_requested_at:null}
-    :{review_requested:true, review_status:null, review_comment:null, reviewer:null, review_requested_at:new Date().toISOString()};
-  const {error}=await sb.from('events').update(payload).eq('id',detailId);
+  if(isRequested){
+    // 취소 확인
+    if(confirm('검수 요청을 취소할까요?')) cancelReviewRequest();
+    return;
+  }
+  // 모달 초기화
+  document.querySelectorAll('input[name="review-type"]').forEach(r=>r.checked=false);
+  selectReviewType(null);
+  document.getElementById('review-request-comment').value=ev.review_request_comment||'';
+  // 기존 review_type 복원
+  if(ev.review_type){
+    const radio=document.querySelector(`input[name="review-type"][value="${ev.review_type}"]`);
+    if(radio){radio.checked=true;selectReviewType(ev.review_type);}
+  }
+  closeDetail();
+  document.getElementById('review-request-modal').classList.add('open');
+}
+
+function closeReviewRequest(){
+  document.getElementById('review-request-modal').classList.remove('open');
+}
+
+function selectReviewType(type){
+  ['소재','투고문'].forEach(t=>{
+    const lbl=document.getElementById(`type-label-${t}`);
+    if(!lbl) return;
+    if(t===type){
+      lbl.style.borderColor='#F59E0B';
+      lbl.style.background='#FFF9E6';
+      lbl.style.color='#92400E';
+    } else {
+      lbl.style.borderColor='var(--border)';
+      lbl.style.background='var(--surface)';
+      lbl.style.color='var(--text-2)';
+    }
+  });
+}
+
+async function submitReviewRequest(){
+  const type=document.querySelector('input[name="review-type"]:checked')?.value;
+  if(!type){showToast('검수 유형을 선택해주세요');return;}
+  const comment=document.getElementById('review-request-comment').value.trim();
+  const {error}=await sb.from('events').update({
+    review_requested:true,
+    review_type:type,
+    review_request_comment:comment,
+    review_status:null,
+    review_comment:null,
+    reviewer:null,
+    review_requested_at:new Date().toISOString()
+  }).eq('id',detailId);
   if(error){showToast('오류: '+error.message);return;}
-  showToast(isRequested?'검수 요청이 취소됐어요':'🔔 검수 요청을 보냈어요!');
+  showToast('🔔 검수 요청을 보냈어요!');
+  closeReviewRequest();
+  await loadEvents();
+}
+
+async function cancelReviewRequest(){
+  const {error}=await sb.from('events').update({
+    review_requested:false,
+    review_requested_at:null,
+    review_type:null,
+    review_request_comment:null
+  }).eq('id',detailId);
+  if(error){showToast('오류: '+error.message);return;}
+  showToast('검수 요청이 취소됐어요');
   await loadEvents();
   const updated=events.find(e=>e.id===detailId);
   if(updated) renderReviewStatus(updated);
