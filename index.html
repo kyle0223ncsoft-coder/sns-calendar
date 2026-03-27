@@ -437,6 +437,7 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
     <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:14px">
       <button class="detail-tab active" id="tab-info" onclick="switchDetailTab('info')">소재 정보</button>
       <button class="detail-tab" id="tab-preview" onclick="switchDetailTab('preview')">미리보기</button>
+      <button class="detail-tab" id="tab-history" onclick="switchDetailTab('history')">검수 이력</button>
     </div>
 
     <!-- 소재 정보 탭 -->
@@ -479,8 +480,7 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
     </div>
 
     <!-- X 미리보기 탭 -->
-    <div id="detail-panel-preview" style="display:none">
-      <!-- 권역 전환 버튼 -->
+    <div id="detail-panel-preview" style="display:none">      <!-- 권역 전환 버튼 -->
       <div style="display:flex;gap:6px;margin-bottom:12px" id="x-region-switcher">
         <button class="x-region-btn active" data-region="kr" onclick="switchXRegion('kr',this)">🇰🇷 KR</button>
         <button class="x-region-btn" data-region="jp" onclick="switchXRegion('jp',this)">🇯🇵 JP</button>
@@ -608,6 +608,13 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
         </div>
       </div>
 
+    </div>
+
+    <!-- 검수 이력 탭 -->
+    <div id="detail-panel-history" style="display:none">
+      <div id="history-list" style="display:flex;flex-direction:column;gap:8px">
+        <div style="text-align:center;padding:24px;color:var(--text-3);font-size:13px">불러오는 중...</div>
+      </div>
     </div>
 
     <!-- 검수 현황 -->
@@ -761,6 +768,39 @@ const today = new Date();
 curYear = today.getFullYear();
 curMonth = today.getMonth();
 
+// 공휴일 캐시: { 'YYYY-MM-DD': ['공휴일명1 (KR)', ...] }
+window._holidays = window._holidays || {};
+window._holidayLoaded = window._holidayLoaded || new Set();
+
+async function loadHolidays(year, month){
+  const key = `${year}-${month}`;
+  if(window._holidayLoaded.has(key)) return;
+  window._holidayLoaded.add(key);
+
+  const countries = [
+    { code: 'KR', tag: 'KR' },
+    { code: 'JP', tag: 'JP' },
+    { code: 'US', tag: 'EN' }
+  ];
+
+  await Promise.all(countries.map(async ({code, tag}) => {
+    try {
+      const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/${code}`);
+      if(!res.ok) return;
+      const data = await res.json();
+      data.forEach(h => {
+        const d = h.date; // 'YYYY-MM-DD'
+        const m = parseInt(d.split('-')[1]) - 1;
+        if(m !== month) return; // 해당 월만
+        if(!window._holidays[d]) window._holidays[d] = [];
+        const label = `${h.localName} (${tag})`;
+        if(!window._holidays[d].includes(label))
+          window._holidays[d].push(label);
+      });
+    } catch(e) {}
+  }));
+}
+
 function pad(n){ return n<10?'0'+n:''+n; }
 function toDateStr(y,m,d){ return `${y}-${pad(m+1)}-${pad(d)}`; }
 function shiftDate(ds,days){ const d=new Date(ds); d.setDate(d.getDate()+days); return toDateStr(d.getFullYear(),d.getMonth(),d.getDate()); }
@@ -774,6 +814,7 @@ async function loadEvents(){
   const {data,error} = await sb.from('events').select('*');
   if(error){ showToast('데이터 로드 실패','error'); return; }
   events = data||[];
+  await loadHolidays(curYear, curMonth);
   render();
 }
 
@@ -804,8 +845,8 @@ function toggleFilter(region,el){
   render();
 }
 
-function goToday(){ curYear=today.getFullYear(); curMonth=today.getMonth(); render(); }
-function changeMonth(d){ curMonth+=d; if(curMonth<0){curMonth=11;curYear--;} if(curMonth>11){curMonth=0;curYear++;} render(); }
+function goToday(){ curYear=today.getFullYear(); curMonth=today.getMonth(); loadHolidays(curYear,curMonth).then(()=>render()); }
+function changeMonth(d){ curMonth+=d; if(curMonth<0){curMonth=11;curYear--;} if(curMonth>11){curMonth=0;curYear++;} loadHolidays(curYear,curMonth).then(()=>render()); }
 
 function renderSummary(){
   const el = document.getElementById('summary');
@@ -902,6 +943,17 @@ function render(){
     const num=document.createElement('div');
     num.className='day-num'; num.textContent=date.getDate();
     numRow.appendChild(num);
+    // 공휴일 표시
+    if(!isOther && window._holidays && window._holidays[ds]){
+      const hols = window._holidays[ds];
+      hols.forEach(h=>{
+        const lbl=document.createElement('span');
+        lbl.style.cssText='font-size:10px;font-weight:600;color:#dc2626;background:#fff1f2;border-radius:3px;padding:0 4px;margin-left:3px;flex-shrink:0;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+        lbl.textContent=h;
+        lbl.title=h;
+        numRow.appendChild(lbl);
+      });
+    }
     // 특별 기간 이름 표시
     if(!isOther){
       const hlEv=events.find(ev=>ev.is_highlight&&ev.start_date<=ds&&ev.end_date>=ds);
@@ -1489,8 +1541,50 @@ function renderXCard(region) {
 function switchDetailTab(tab){
   document.getElementById('detail-panel-info').style.display = tab==='info'?'block':'none';
   document.getElementById('detail-panel-preview').style.display = tab==='preview'?'block':'none';
+  document.getElementById('detail-panel-history').style.display = tab==='history'?'block':'none';
   document.getElementById('tab-info').classList.toggle('active', tab==='info');
   document.getElementById('tab-preview').classList.toggle('active', tab==='preview');
+  document.getElementById('tab-history').classList.toggle('active', tab==='history');
+  if(tab==='history') loadHistory(detailId);
+  if(tab==='preview'){
+    currentXRegion='kr';
+    document.querySelectorAll('.x-region-btn').forEach(b=>b.classList.toggle('active',b.dataset.region==='kr'));
+    const ev=events.find(e=>e.id===detailId);
+    if(ev) renderPreview(ev,'kr');
+  }
+}
+
+async function loadHistory(evId){
+  const el = document.getElementById('history-list');
+  if(!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-3);font-size:13px">불러오는 중...</div>';
+  const {data, error} = await sb.from('review_logs')
+    .select('*').eq('event_id', evId)
+    .order('created_at', {ascending:false});
+  if(error || !data?.length){
+    el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-3);font-size:13px">아직 검수 이력이 없어요</div>';
+    return;
+  }
+  const actionLabel = {
+    requested: {text:'검수 요청', bg:'#FFF9E6', border:'#F59E0B', color:'#92400E', icon:'🔔'},
+    approved:  {text:'승인',     bg:'#F0FDF4', border:'#16a34a', color:'#14532d', icon:'✅'},
+    revision:  {text:'수정 요청', bg:'#FFF1F2', border:'#dc2626', color:'#7f1d1d', icon:'🔄'},
+    cancelled: {text:'요청 취소', bg:'#F3F4F6', border:'#9ca3af', color:'#374151', icon:'🚫'},
+  };
+  el.innerHTML = data.map(log => {
+    const a = actionLabel[log.action] || {text:log.action, bg:'#f3f4f6', border:'#d1d5db', color:'#374151', icon:'📋'};
+    const date = new Date(log.created_at);
+    const dateStr = `${date.getFullYear()}.${String(date.getMonth()+1).padStart(2,'0')}.${String(date.getDate()).padStart(2,'0')} ${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
+    return `<div style="border:1px solid ${a.border};border-radius:8px;padding:10px 12px;background:${a.bg}">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:${log.comment?'6px':'0'}">
+        <span style="font-size:12px;font-weight:700;color:${a.color}">${a.icon} ${a.text}</span>
+        ${log.review_type?`<span style="font-size:10px;background:rgba(0,0,0,.07);border-radius:4px;padding:1px 6px;color:${a.color}">${log.review_type==='소재'?'🎨 소재':'✍️ 투고문'}</span>`:''}
+        <span style="font-size:11px;color:var(--text-3);margin-left:auto">${dateStr}</span>
+      </div>
+      ${log.comment?`<div style="font-size:12px;color:${a.color};opacity:.85;margin-bottom:4px">"${log.comment}"</div>`:''}
+      <div style="font-size:11px;color:var(--text-3)">${log.actor||''}</div>
+    </div>`;
+  }).join('');
 }
 
 function openDetail(id){
@@ -1633,6 +1727,13 @@ async function submitReviewRequest(){
     review_requested_at:new Date().toISOString()
   }).eq('id',detailId);
   if(error){showToast('오류: '+error.message,'error');return;}
+  // 검수 이력 로그
+  const ev=events.find(e=>e.id===detailId);
+  await sb.from('review_logs').insert({
+    event_id:detailId, event_name:ev?.name||'',
+    action:'requested', review_type:type, comment:comment,
+    actor:getMyName()||'마케터'
+  });
   showToast('🔔 검수 요청을 보냈어요!','success');
   closeReviewRequest();
   await loadEvents();
@@ -1646,6 +1747,11 @@ async function cancelReviewRequest(){
     review_request_comment:null
   }).eq('id',detailId);
   if(error){showToast('오류: '+error.message,'error');return;}
+  const ev=events.find(e=>e.id===detailId);
+  await sb.from('review_logs').insert({
+    event_id:detailId, event_name:ev?.name||'',
+    action:'cancelled', actor:getMyName()||'마케터'
+  });
   showToast('검수 요청이 취소됐어요','success');
   await loadEvents();
   const updated=events.find(e=>e.id===detailId);

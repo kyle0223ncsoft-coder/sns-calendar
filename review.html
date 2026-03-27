@@ -608,6 +608,13 @@ async function submitReview(){
     review_requested:false
   }).eq('id',detailEvId);
   if(error){showToast('저장 실패: '+error.message);return;}
+  // 검수 이력 로그
+  const ev=events.find(e=>e.id===detailEvId);
+  await sb.from('review_logs').insert({
+    event_id:detailEvId, event_name:ev?.name||'',
+    action:selectedStatus, comment,
+    actor:reviewer||getMyName()||'검수자'
+  });
   showToast(selectedStatus==='approved'?'✅ 승인 저장됐어요!':'🔄 수정 요청 저장됐어요!');
   await loadEvents();
   closeDetail();
