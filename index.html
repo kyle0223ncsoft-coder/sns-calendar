@@ -720,7 +720,7 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
     <div class="form-row">
       <label class="form-label">검수 담당자</label>
       <select class="form-select" id="review-assignee-select">
-        <option value="">전체 검수자에게</option>
+        <option value="">불러오는 중...</option>
       </select>
     </div>
     <div class="form-row">
@@ -1925,39 +1925,51 @@ async function openReviewAssigneeDropdown(){
   const reviewers = await loadMembers('reviewer');
   const sel = document.getElementById('review-assignee-select');
   if(!sel) return;
-  sel.innerHTML = '<option value="">전체 검수자에게</option>' +
-    reviewers.map(m=>`<option value="${m.name}">${m.name}</option>`).join('');
+  if(reviewers.length===0){
+    sel.innerHTML = '<option value="">등록된 검수자 없음 (전체 전송)</option>';
+  } else {
+    sel.innerHTML = '<option value="">— 검수 담당자 선택 (미선택 시 전체 전송) —</option>' +
+      reviewers.map(m=>`<option value="${m.name}">${m.name}</option>`).join('');
+  }
 }
 
 
 
-sb.channel('events-changes').on('postgres_changes',{event:'UPDATE',schema:'public',table:'events'},(payload)=>{
+function handleRealtimeUpdate(payload){
   if(payload.new && payload.old){
     const oldEv = payload.old;
     const newEv = payload.new;
     const myName = getMyName();
-    // 담당 마케터 필터: review_marketer가 있으면 그 사람만, 없으면 전체
     const reviewMarketer = newEv.review_marketer||'';
     const isMyEvent = !myName || !reviewMarketer || reviewMarketer === myName;
     if(isMyEvent){
       if(oldEv.review_status !== 'revision' && newEv.review_status === 'revision'){
-        sendNotification(
-          `🔄 수정 요청 — ${newEv.name}`,
-          newEv.review_comment ? `"${newEv.review_comment}"` : '검수자가 수정을 요청했어요.'
-        );
+        sendNotification(`🔄 수정 요청 — ${newEv.name}`, newEv.review_comment?`"${newEv.review_comment}"` : '검수자가 수정을 요청했어요.');
         showToast(`🔄 "${newEv.name}" 수정 요청이 왔어요`,'error');
       }
       if(oldEv.review_status !== 'approved' && newEv.review_status === 'approved'){
-        sendNotification(
-          `✅ 승인됨 — ${newEv.name}`,
-          newEv.reviewer ? `${newEv.reviewer}님이 승인했어요.` : '검수자가 승인했어요.'
-        );
+        sendNotification(`✅ 승인됨 — ${newEv.name}`, newEv.reviewer?`${newEv.reviewer}님이 승인했어요.`:'검수자가 승인했어요.');
         showToast(`✅ "${newEv.name}" 승인됐어요`,'success');
       }
     }
   }
   loadEvents();
-}).on('postgres_changes',{event:'INSERT',schema:'public',table:'events'},()=>loadEvents()).subscribe();
+}
+
+function subscribeRealtime(){
+  sb.removeAllChannels();
+  sb.channel('events-changes')
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'events'},handleRealtimeUpdate)
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'events'},()=>loadEvents())
+    .subscribe((status)=>{
+      console.log('Realtime 상태:', status);
+      if(status==='CHANNEL_ERROR'||status==='CLOSED'||status==='TIMED_OUT'){
+        console.log('Realtime 에러 — 3초 후 재연결...');
+        setTimeout(()=>subscribeRealtime(), 3000);
+      }
+    });
+}
+subscribeRealtime();
 
 requestNotificationPermission();
 renderMyNameBadge();
