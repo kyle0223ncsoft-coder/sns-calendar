@@ -781,6 +781,22 @@ async function loadEvents(){
   events=data||[];
   renderCounts();
   render();
+  // 모달이 열려있으면 드롭다운 값 보존
+  if(detailEvId && document.getElementById('detail-modal')?.classList.contains('open')){
+    const savedMarketer = document.getElementById('review-marketer-select')?.value;
+    const savedReviewer = document.getElementById('reviewer-name')?.value;
+    const savedComment = document.getElementById('review-comment')?.value;
+    openDetail(detailEvId);
+    // 저장된 값 복원
+    requestAnimationFrame(()=>{
+      const mSel = document.getElementById('review-marketer-select');
+      const rSel = document.getElementById('reviewer-name');
+      const cTxt = document.getElementById('review-comment');
+      if(mSel && savedMarketer) mSel.value = savedMarketer;
+      if(rSel && savedReviewer) rSel.value = savedReviewer;
+      if(cTxt && savedComment) cTxt.value = savedComment;
+    });
+  }
 }// 실시간 동기화
 sb.channel('events-review').on('postgres_changes',{event:'UPDATE',schema:'public',table:'events'},(payload)=>{
   if(payload.new && payload.old){
