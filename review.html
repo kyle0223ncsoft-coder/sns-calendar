@@ -239,6 +239,10 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
       <select class="review-input" id="review-marketer-select" style="appearance:auto">
         <option value="">담당 마케터 선택 (선택 안 하면 전체 전송)</option>
       </select>
+      <div style="font-size:11px;color:#3b6193;background:#EFF6FF;border-radius:6px;padding:8px 10px;margin:8px 0 4px;line-height:1.7;border:1px solid #BFDBFE">
+        💡 <b>특정 권역만 수정 필요한 경우</b>에도 [🔄 수정 요청]을 사용하세요.<br>
+        담당 마케터 지정 후 코멘트에 <b>"KR만 수정 필요, 타 권역 이상 없음"</b> 형식으로 명시해주세요.
+      </div>
       <textarea class="review-textarea" id="review-comment" placeholder="코멘트를 입력하세요 (선택)"></textarea>
       <div class="modal-btns" style="margin-top:0">
         <button class="btn-cancel" onclick="closeDetail()">닫기</button>
@@ -789,8 +793,12 @@ async function loadReviewerDropdown(){
   const sel = document.getElementById('reviewer-name');
   if(!sel) return;
   const cur = sel.value || getMyName();
-  sel.innerHTML = '<option value="">검수자 이름 선택</option>' +
-    reviewers.map(m=>`<option value="${m.name}" ${m.name===cur?'selected':''}>${m.name}</option>`).join('');
+  if(reviewers.length===0){
+    sel.innerHTML = '<option value="">등록된 검수자 없음</option>';
+  } else {
+    sel.innerHTML = '<option value="">— 검수자 이름 선택 —</option>' +
+      reviewers.map(m=>`<option value="${m.name}" ${m.name===cur?'selected':''}>${m.name}</option>`).join('');
+  }
 }
 
 // 마케터 드롭다운 로드
@@ -798,8 +806,12 @@ async function loadMarketerDropdown(selectedName=''){
   const marketers = await loadMembers('marketer');
   const sel = document.getElementById('review-marketer-select');
   if(!sel) return;
-  sel.innerHTML = '<option value="">담당 마케터 선택 (선택 안 하면 전체 전송)</option>' +
-    marketers.map(m=>`<option value="${m.name}" ${m.name===selectedName?'selected':''}>${m.name}</option>`).join('');
+  if(marketers.length===0){
+    sel.innerHTML = '<option value="">등록된 마케터 없음 (전체 전송)</option>';
+  } else {
+    sel.innerHTML = '<option value="">— 수정 담당 마케터 선택 (미선택 시 전체 전송) —</option>' +
+      marketers.map(m=>`<option value="${m.name}" ${m.name===selectedName?'selected':''}>${m.name}</option>`).join('');
+  }
 }
 
 
@@ -833,25 +845,42 @@ async function loadEvents(){
     });
   }
 }// 실시간 동기화
-sb.channel('events-review').on('postgres_changes',{event:'UPDATE',schema:'public',table:'events'},(payload)=>{
+function handleRealtimePayload(payload){
   if(payload.new && payload.old){
-    const oldEv = payload.old;
-    const newEv = payload.new;
-    const myName = getMyName();
-    // 검수 요청 필터: review_assignee가 비어있거나 내 이름과 일치할 때만
-    const reviewAssignee = newEv.review_assignee||'';
-    const isForMe = !myName || !reviewAssignee || reviewAssignee === myName;
+    const oldEv=payload.old, newEv=payload.new;
+    const myName=getMyName();
+    const reviewAssignee=newEv.review_assignee||'';
+    const isForMe=!myName||!reviewAssignee||reviewAssignee===myName;
     if(isForMe && !oldEv.review_requested && newEv.review_requested && !newEv.review_status){
-      const typeLabel = newEv.review_type ? (newEv.review_type==='소재'?'🎨 소재':'✍️ 투고문') : '';
-      sendNotification(
-        `🔔 검수 요청 — ${newEv.name}`,
-        [typeLabel, newEv.review_request_comment].filter(Boolean).join(' · ') || '마케터가 검수를 요청했어요.'
-      );
+      const typeLabel=newEv.review_type?(newEv.review_type==='소재'?'🎨 소재':'✍️ 투고문'):'';
+      sendNotification(`🔔 검수 요청 — ${newEv.name}`,
+        [typeLabel,newEv.review_request_comment].filter(Boolean).join(' · ')||'마케터가 검수를 요청했어요.');
       showToast(`🔔 "${newEv.name}" 검수 요청이 왔어요`,'default');
     }
   }
   loadEvents();
-}).on('postgres_changes',{event:'INSERT',schema:'public',table:'events'},()=>loadEvents()).subscribe();
+}
+
+function subscribeRealtime(){
+  sb.removeAllChannels();
+  sb.channel('events-review')
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'events'},handleRealtimePayload)
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'events'},()=>loadEvents())
+    .subscribe((status)=>{ console.log('Realtime 상태:', status); });
+}
+subscribeRealtime();
+
+// 채널 에러 시 자동 재연결 (30초마다 체크)
+setInterval(()=>{
+  const ch = sb.getChannels().find(c=>c.state==='joined'||c.state==='joining');
+  if(!ch){
+    console.log('Realtime 재연결 중...');
+    loadEvents();
+    sb.removeAllChannels();
+    subscribeRealtime();
+  }
+}, 30000);
+
 requestNotificationPermission();
 renderMyNameBadge();
 loadReviewerDropdown();
