@@ -861,16 +861,20 @@ function handleRealtimePayload(payload){
   loadEvents();
 }
 
+let _realtimeRetry = 1000;
 function subscribeRealtime(){
   sb.removeAllChannels();
-  sb.channel('sns-calendar')
+  sb.channel('events-review')
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'events'},handleRealtimePayload)
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'events'},()=>loadEvents())
     .subscribe((status)=>{
       console.log('Realtime 상태:', status);
-      if(status==='CHANNEL_ERROR'||status==='CLOSED'||status==='TIMED_OUT'){
-        console.log('Realtime 에러 — 3초 후 재연결...');
-        setTimeout(()=>subscribeRealtime(), 3000);
+      if(status==='SUBSCRIBED'){
+        _realtimeRetry=1000; // 성공 시 재시도 간격 초기화
+      } else if(status==='CHANNEL_ERROR'||status==='CLOSED'||status==='TIMED_OUT'){
+        console.log(`Realtime 재연결 ${_realtimeRetry/1000}초 후...`);
+        setTimeout(()=>subscribeRealtime(), _realtimeRetry);
+        _realtimeRetry=Math.min(_realtimeRetry*2, 30000); // 최대 30초
       }
     });
 }
