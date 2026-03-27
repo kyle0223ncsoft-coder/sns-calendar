@@ -866,20 +866,15 @@ function subscribeRealtime(){
   sb.channel('events-review')
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'events'},handleRealtimePayload)
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'events'},()=>loadEvents())
-    .subscribe((status)=>{ console.log('Realtime 상태:', status); });
+    .subscribe((status)=>{
+      console.log('Realtime 상태:', status);
+      if(status==='CHANNEL_ERROR'||status==='CLOSED'||status==='TIMED_OUT'){
+        console.log('Realtime 에러 — 3초 후 재연결...');
+        setTimeout(()=>subscribeRealtime(), 3000);
+      }
+    });
 }
 subscribeRealtime();
-
-// 채널 에러 시 자동 재연결 (30초마다 체크)
-setInterval(()=>{
-  const ch = sb.getChannels().find(c=>c.state==='joined'||c.state==='joining');
-  if(!ch){
-    console.log('Realtime 재연결 중...');
-    loadEvents();
-    sb.removeAllChannels();
-    subscribeRealtime();
-  }
-}, 30000);
 
 requestNotificationPermission();
 renderMyNameBadge();
