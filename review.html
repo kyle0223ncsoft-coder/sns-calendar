@@ -277,6 +277,31 @@ let events=[], curYear, curMonth, detailEvId=null, selectedStatus=null, curXRegi
 const today=new Date();
 curYear=today.getFullYear(); curMonth=today.getMonth();
 
+// 공휴일 캐시
+window._holidays = window._holidays || {};
+window._holidayLoaded = window._holidayLoaded || new Set();
+
+async function loadHolidays(year, month){
+  const key = `${year}-${month}`;
+  if(window._holidayLoaded.has(key)) return;
+  window._holidayLoaded.add(key);
+  const countries = [{code:'KR',tag:'KR'},{code:'JP',tag:'JP'},{code:'US',tag:'EN'}];
+  await Promise.all(countries.map(async ({code,tag})=>{
+    try {
+      const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/${code}`);
+      if(!res.ok) return;
+      const data = await res.json();
+      data.forEach(h=>{
+        const m = parseInt(h.date.split('-')[1])-1;
+        if(m!==month) return;
+        if(!window._holidays[h.date]) window._holidays[h.date]=[];
+        const label=`${h.localName} (${tag})`;
+        if(!window._holidays[h.date].includes(label)) window._holidays[h.date].push(label);
+      });
+    } catch(e){}
+  }));
+}
+
 function pad(n){return n<10?'0'+n:''+n;}
 function toDateStr(y,m,d){return `${y}-${pad(m+1)}-${pad(d)}`;}
 function formatNoteTime(ts){
@@ -306,8 +331,8 @@ function toggleFilter(){
   render();
 }
 
-function changeMonth(d){curMonth+=d;if(curMonth<0){curMonth=11;curYear--;}if(curMonth>11){curMonth=0;curYear++;}render();}
-function goToday(){curYear=today.getFullYear();curMonth=today.getMonth();render();}
+function changeMonth(d){curMonth+=d;if(curMonth<0){curMonth=11;curYear--;}if(curMonth>11){curMonth=0;curYear++;}loadHolidays(curYear,curMonth).then(()=>render());}
+function goToday(){curYear=today.getFullYear();curMonth=today.getMonth();loadHolidays(curYear,curMonth).then(()=>render());}
 
 function renderSummary(){
   const ms=`${curYear}-${pad(curMonth+1)}-01`;
@@ -388,6 +413,15 @@ function render(){
     const numRow=document.createElement('div');numRow.className='day-num-row';
     const num=document.createElement('div');num.className='day-num';num.textContent=date.getDate();
     numRow.appendChild(num);
+    // 공휴일 표시
+    if(!isOther && window._holidays && window._holidays[ds]){
+      window._holidays[ds].forEach(h=>{
+        const lbl=document.createElement('span');
+        lbl.style.cssText='font-size:10px;font-weight:600;color:#dc2626;background:#fff1f2;border-radius:3px;padding:0 4px;margin-left:3px;flex-shrink:0;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+        lbl.textContent=h; lbl.title=h;
+        numRow.appendChild(lbl);
+      });
+    }
     if(!isOther){
       const hlEv=events.find(ev=>ev.is_highlight&&ev.start_date===ds&&ev.end_date>=ds);
       if(hlEv){const lbl=document.createElement('span');lbl.className='hl-label';const parts=(hlEv.note||'').split('|');lbl.style.color=parts[2]||'#92400E';lbl.textContent=hlEv.name;numRow.appendChild(lbl);}
@@ -780,6 +814,7 @@ async function loadEvents(){
   if(error){showToast('로드 실패','error');return;}
   events=data||[];
   renderCounts();
+  await loadHolidays(curYear, curMonth);
   render();
   // 모달이 열려있으면 드롭다운 값 보존
   if(detailEvId && document.getElementById('detail-modal')?.classList.contains('open')){
