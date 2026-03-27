@@ -15,6 +15,7 @@
   --kr-c:#185FA5;--kr-bg:#E6F1FB;--kr-border:#378ADD;
   --jp-c:#0F6E56;--jp-bg:#E1F5EE;--jp-border:#1D9E75;
   --en-c:#3C3489;--en-bg:#EEEDFE;--en-border:#7F77DD;
+  --tw-c:#7B3F00;--tw-bg:#FEF3E2;--tw-border:#F59E0B;
   --bg:#F8F7F4;--surface:#fff;--border:rgba(0,0,0,0.09);
   --text:#1a1a18;--text-2:#6b6b67;--text-3:#9e9d99;
   --r:10px;--rs:6px;
@@ -35,6 +36,7 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
 .chip.kr{background:var(--kr-bg);color:var(--kr-c);border-color:var(--kr-border)}
 .chip.jp{background:var(--jp-bg);color:var(--jp-c);border-color:var(--jp-border)}
 .chip.en{background:var(--en-bg);color:var(--en-c);border-color:var(--en-border)}
+.chip.tw{background:var(--tw-bg);color:var(--tw-c);border-color:var(--tw-border)}
 .btn-add{background:var(--text);color:#fff;border:none;border-radius:var(--rs);padding:7px 14px;font-size:13px;font-family:inherit;cursor:pointer;font-weight:500;transition:opacity .15s;white-space:nowrap}
 .btn-add:hover{opacity:.8}
 
@@ -59,6 +61,7 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
 .sum-chip.kr{background:var(--kr-bg);color:var(--kr-c)}
 .sum-chip.jp{background:var(--jp-bg);color:var(--jp-c)}
 .sum-chip.en{background:var(--en-bg);color:var(--en-c)}
+.sum-chip.tw{background:var(--tw-bg);color:var(--tw-c)}
 
 
 /* loading spinner */
@@ -205,6 +208,7 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
       <div class="chip kr"   onclick="toggleFilter('kr',this)">KR 단독</div>
       <div class="chip jp"   onclick="toggleFilter('jp',this)">JP 단독</div>
       <div class="chip en"   onclick="toggleFilter('en',this)">EN 단독</div>
+      <div class="chip tw"   onclick="toggleFilter('tw',this)">TW 단독</div>
     </div>
     <button class="btn-add" onclick="openAdd()">+ 소재 추가</button>
     <button onclick="promptMyName();renderMyNameBadge();" id="my-name-badge" style="padding:6px 12px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;cursor:pointer;color:var(--text-2)">👤 이름 설정</button>
@@ -261,6 +265,7 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
           <option value="kr">🇰🇷 KR 단독</option>
           <option value="jp">🇯🇵 JP 단독</option>
           <option value="en">🌐 EN 단독</option>
+          <option value="tw">🇹🇼 TW 단독</option>
         </select>
       </div>
       <div class="form-row">
@@ -314,6 +319,7 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
             <div class="note-tab-btn active" data-region="kr" onclick="switchNoteTab('kr',this)" style="cursor:pointer">KR</div>
             <div class="note-tab-btn" data-region="jp" onclick="switchNoteTab('jp',this)" style="cursor:pointer">JP</div>
             <div class="note-tab-btn" data-region="en" onclick="switchNoteTab('en',this)" style="cursor:pointer">EN</div>
+            <div class="note-tab-btn" data-region="tw" id="note-tab-btn-tw" onclick="switchNoteTab('tw',this)" style="cursor:pointer;display:none">TW</div>
           </div>
         </div>
         <div id="note-hint" style="display:none;font-size:11px;color:var(--text-3);background:var(--bg);border-radius:var(--rs);padding:8px 10px;margin-bottom:8px">입력하지 않은 권역은 X 미리보기에서 '(투고문 없음)'으로 표시돼요</div>
@@ -328,6 +334,10 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
         <div id="note-tab-en" style="display:none">
           <textarea class="form-textarea" id="f-note-en" placeholder="Enter EN post content&#10;&#10;#hashtag" style="min-height:100px"></textarea>
           <div id="note-en-updated" style="font-size:11px;color:var(--text-3);margin-top:4px;text-align:right;min-height:16px"></div>
+        </div>
+        <div id="note-tab-tw" style="display:none">
+          <textarea class="form-textarea" id="f-note-tw" placeholder="TW 투고문을 입력하세요&#10;&#10;#해시태그1 #해시태그2" style="min-height:100px"></textarea>
+          <div id="note-tw-updated" style="font-size:11px;color:var(--text-3);margin-top:4px;text-align:right;min-height:16px"></div>
         </div>
       </div>
       <div class="form-row">
@@ -471,6 +481,14 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
         <div style="flex:1">
           <div class="detail-val" id="detail-note-en" style="white-space:pre-wrap;line-height:1.6;font-size:12px"></div>
           <div id="detail-note-en-ts" style="font-size:10px;color:var(--text-3);margin-top:3px;text-align:right"></div>
+        </div>
+      </div>
+      <div style="border-top:1.5px solid var(--border);margin:6px 0" id="detail-note-div-tw"></div>
+      <div class="detail-row" id="detail-note-tw-row">
+        <div class="detail-label" style="color:#7B3F00;font-weight:600">TW</div>
+        <div style="flex:1">
+          <div class="detail-val" id="detail-note-tw" style="white-space:pre-wrap;line-height:1.6;font-size:12px"></div>
+          <div id="detail-note-tw-ts" style="font-size:10px;color:var(--text-3);margin-top:3px;text-align:right"></div>
         </div>
       </div>
       <div class="detail-row" id="detail-assignee-row">
@@ -745,13 +763,14 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
   }
 });
 
-const REGION_LABELS = { game:'게임 콘텐츠 소재 (공통)', fun:'Fun/참여형 (공통)', kr:'KR 단독', jp:'JP 단독', en:'EN 단독' };
+const REGION_LABELS = { game:'게임 콘텐츠 소재 (공통)', fun:'Fun/참여형 (공통)', kr:'KR 단독', jp:'JP 단독', en:'EN 단독', tw:'TW 단독' };
 const REGION_BADGE = {
   game:{ bg:'#EAF3DE', color:'#3B6D11', border:'#639922' },
   fun: { bg:'#FAECE7', color:'#993C1D', border:'#D85A30' },
   kr:  { bg:'#E6F1FB', color:'#185FA5', border:'#378ADD' },
   jp:  { bg:'#E1F5EE', color:'#0F6E56', border:'#1D9E75' },
   en:  { bg:'#EEEDFE', color:'#3C3489', border:'#7F77DD' },
+  tw:  { bg:'#FEF3E2', color:'#7B3F00', border:'#F59E0B' },
 };
 const PLATFORM_ICONS = {
   'X':        `<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.737-8.835L1.254 2.25H8.08l4.253 5.622 5.91-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>`,
@@ -763,7 +782,7 @@ const PLATFORM_ICONS = {
 const PLAT_ICONS_SM = Object.fromEntries(Object.entries(PLATFORM_ICONS).map(([k,v])=>[k,v.replace(/width="13" height="13"/g,'width="15" height="15"')]));
 
 let events = [], curYear, curMonth, editId = null, detailId = null;
-const activeFilters = new Set(['game','fun','kr','jp','en']);
+const activeFilters = new Set(['game','fun','kr','jp','en','tw']);
 const today = new Date();
 curYear = today.getFullYear();
 curMonth = today.getMonth();
@@ -854,9 +873,9 @@ function renderSummary(){
   const ms = `${curYear}-${pad(curMonth+1)}-01`;
   const me = `${curYear}-${pad(curMonth+1)}-${pad(new Date(curYear,curMonth+1,0).getDate())}`;
   const mo = events.filter(ev=>activeFilters.has(ev.region)&&ev.start_date<=me&&ev.end_date>=ms);
-  const counts={game:0,fun:0,kr:0,jp:0,en:0};
+  const counts={game:0,fun:0,kr:0,jp:0,en:0,tw:0};
   mo.forEach(ev=>{ if(counts[ev.region]!==undefined) counts[ev.region]++; });
-  const labels={game:'게임 공통',fun:'Fun 공통',kr:'KR',jp:'JP',en:'EN'};
+  const labels={game:'게임 공통',fun:'Fun 공통',kr:'KR',jp:'JP',en:'EN',tw:'TW'};
   const chips=Object.entries(counts).filter(([,v])=>v>0).map(([k,v])=>`<span class="sum-chip ${k}">${labels[k]} ${v}</span>`).join('');
   el.innerHTML=`<span class="sum-total">이번 달 총 ${mo.length}개</span>${chips?'· '+chips:''}`;
 }
@@ -1106,6 +1125,7 @@ function selectPlat(btn){
   const isOn=btn.classList.contains('on');
   document.querySelectorAll('.plat-btn').forEach(b=>b.classList.remove('on'));
   if(!isOn) btn.classList.add('on');
+  updateNoteTabs();
 }
 function togglePlat(btn){ selectPlat(btn); }
 function getSelectedPlats(){ return Array.from(document.querySelectorAll('.plat-btn.on')).map(b=>b.dataset.plat); }
@@ -1135,6 +1155,7 @@ function openAdd(ds){
   document.getElementById('f-note-kr').value='';
   document.getElementById('f-note-jp').value='';
   document.getElementById('f-note-en').value='';
+  document.getElementById('f-note-tw').value='';
   ['kr','jp','en'].forEach(r=>{const el=document.getElementById(`note-${r}-updated`);if(el)el.textContent='';});
   switchNoteTab('kr', null);
   document.getElementById('f-assignee').value='';
@@ -1175,6 +1196,7 @@ function openEdit(id){
     document.getElementById('f-note-kr').value=ev.note_kr||'';
     document.getElementById('f-note-jp').value=ev.note_jp||'';
     document.getElementById('f-note-en').value=ev.note_en||'';
+    document.getElementById('f-note-tw').value=ev.note_tw||'';
     setNoteTimestamps(ev);
     switchNoteTab('kr', null);
     document.getElementById('f-assignee').value=ev.assignee||'';
@@ -1225,8 +1247,9 @@ async function saveEvent(){
     const newNoteKr=document.getElementById('f-note-kr').value.trim();
     const newNoteJp=document.getElementById('f-note-jp').value.trim();
     const newNoteEn=document.getElementById('f-note-en').value.trim();
+    const newNoteTw=document.getElementById('f-note-tw').value.trim();
     payload={name,region:document.getElementById('f-region').value,platform:getSelectedPlats().join(','),start_date:start,end_date:end<start?start:end,note:'',
-      note_kr:newNoteKr,note_jp:newNoteJp,note_en:newNoteEn,
+      note_kr:newNoteKr,note_jp:newNoteJp,note_en:newNoteEn,note_tw:newNoteTw,
       note_kr_updated_at:newNoteKr!==(prevEv?.note_kr||'')?now:(prevEv?.note_kr_updated_at||null),
       note_jp_updated_at:newNoteJp!==(prevEv?.note_jp||'')?now:(prevEv?.note_jp_updated_at||null),
       note_en_updated_at:newNoteEn!==(prevEv?.note_en||'')?now:(prevEv?.note_en_updated_at||null),
@@ -1482,10 +1505,32 @@ function setNoteTimestamps(ev){
 }
 
 function switchNoteTab(region, btn) {
-  ['kr','jp','en'].forEach(r => {
+  ['kr','jp','en','tw'].forEach(r => {
     document.getElementById(`note-tab-${r}`).style.display = r===region ? 'block' : 'none';
-    document.querySelector(`.note-tab-btn[data-region="${r}"]`).classList.toggle('active', r===region);
+    const tabBtn = document.querySelector(`.note-tab-btn[data-region="${r}"]`);
+    if(tabBtn) tabBtn.classList.toggle('active', r===region);
   });
+}
+
+// FB 플랫폼 선택 시 TW 탭만 표시
+function updateNoteTabs(){
+  const plat = getSelectedPlats()[0]||'';
+  const isFB = plat === 'Facebook';
+  const twBtn = document.getElementById('note-tab-btn-tw');
+  if(twBtn) twBtn.style.display = isFB ? 'inline-flex' : 'none';
+  // FB면 KR/JP/EN 숨기고 TW 활성화, 그 외엔 KR/JP/EN만
+  ['kr','jp','en'].forEach(r=>{
+    const btn = document.querySelector(`.note-tab-btn[data-region="${r}"]`);
+    if(btn) btn.style.display = isFB ? 'none' : '';
+  });
+  if(isFB){
+    switchNoteTab('tw', null);
+  } else {
+    // TW탭이 활성화돼있었으면 KR로 이동
+    const twTab = document.getElementById('note-tab-tw');
+    if(twTab && twTab.style.display==='block') switchNoteTab('kr', null);
+    else if(!document.querySelector('.note-tab-btn.active')) switchNoteTab('kr', null);
+  }
 }
 
 function switchXRegion(region, btn) {
@@ -1607,7 +1652,8 @@ function openDetail(id){
   // 권역별 투고문 표시
   [['kr','detail-note-kr-row','detail-note-kr','detail-note-kr-ts'],
    ['jp','detail-note-jp-row','detail-note-jp','detail-note-jp-ts'],
-   ['en','detail-note-en-row','detail-note-en','detail-note-en-ts']].forEach(([r,rowId,valId,tsId])=>{
+   ['en','detail-note-en-row','detail-note-en','detail-note-en-ts'],
+   ['tw','detail-note-tw-row','detail-note-tw','detail-note-tw-ts']].forEach(([r,rowId,valId,tsId])=>{
     const row=document.getElementById(rowId);
     const val=document.getElementById(valId);
     const ts=document.getElementById(tsId);
