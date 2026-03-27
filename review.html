@@ -863,7 +863,7 @@ function handleRealtimePayload(payload){
 
 function subscribeRealtime(){
   sb.removeAllChannels();
-  sb.channel('events-review')
+  sb.channel('sns-calendar')
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'events'},handleRealtimePayload)
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'events'},()=>loadEvents())
     .subscribe((status)=>{
