@@ -2,7 +2,6 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>글로벌 SNS 캘린더</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231a1a18'/><rect x='6' y='10' width='20' height='16' rx='2' fill='white'/><rect x='6' y='10' width='20' height='6' rx='2' fill='%23378ADD'/><rect x='10' y='6' width='3' height='6' rx='1.5' fill='%231a1a18'/><rect x='19' y='6' width='3' height='6' rx='1.5' fill='%231a1a18'/><rect x='9' y='20' width='3' height='3' rx='0.5' fill='%23378ADD'/><rect x='14' y='20' width='3' height='3' rx='0.5' fill='%23378ADD'/><rect x='19' y='20' width='3' height='3' rx='0.5' fill='%23639922'/></svg>">
@@ -1342,7 +1341,25 @@ function renderPreview(ev, region){
     if(regionSwitcher) regionSwitcher.style.display = 'none';
     return;
   }
-  if(regionSwitcher) regionSwitcher.style.display = 'flex';
+  // 단독 권역(kr/jp/en/tw)이면 해당 버튼만 표시, 공통이면 전체 표시
+  const soloRegions = ['kr','jp','en','tw'];
+  if(regionSwitcher){
+    regionSwitcher.style.display = 'flex';
+    if(soloRegions.includes(ev.region)){
+      // 해당 권역 버튼만 보이게
+      regionSwitcher.querySelectorAll('.x-region-btn').forEach(btn => {
+        btn.style.display = btn.dataset.region === ev.region ? '' : 'none';
+      });
+      // 해당 권역을 active로 설정
+      region = ev.region;
+      currentXRegion = ev.region;
+    } else {
+      // 공통이면 전부 보여주기
+      regionSwitcher.querySelectorAll('.x-region-btn').forEach(btn => {
+        btn.style.display = '';
+      });
+    }
+  }
 
   if(plat === 'X'){
     document.getElementById('preview-x').style.display = 'block';
@@ -1379,7 +1396,7 @@ function renderInstagramCard(region, ev){
   const lines=note.split('\n');
   const body=lines.filter(l=>!l.trim().startsWith('#')).join('\n').trim();
   const tags=note.match(/#\S+/g)||[];
-  document.getElementById('ins-body').textContent=body||'(투고문 없음)';
+  document.getElementById('ins-body').innerHTML=body ? body.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>') : '(투고문 없음)';
   document.getElementById('ins-hashtags').textContent=tags.join(' ');
   document.getElementById('ins-meta').textContent=ev.start_date+' · '+ev.start_date;
   const imgArea=document.getElementById('ins-image-area');
@@ -1404,7 +1421,7 @@ function renderFacebookCard(region, ev){
   const lines=note.split('\n');
   const body=lines.filter(l=>!l.trim().startsWith('#')).join('\n').trim();
   const tags=note.match(/#\S+/g)||[];
-  document.getElementById('fb-body').textContent=body||'(투고문 없음)';
+  document.getElementById('fb-body').innerHTML=body ? body.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>') : '(투고문 없음)';
   document.getElementById('fb-hashtags').textContent=tags.join(' ');
   const imgArea=document.getElementById('fb-image-area');
   const {mediaUrl,media,isVideo}=getMediaForPreview(ev,region);
@@ -1557,8 +1574,8 @@ function renderXCard(region) {
 
   document.getElementById('x-name').textContent = nameMap[region];
   document.getElementById('x-handle').textContent = handleMap[region];
-  document.getElementById('x-body').textContent = bodyText || '(투고문 없음)';
-  document.getElementById('x-body').style.color = bodyText ? '#0f1419' : '#536471';
+  document.getElementById('x-body').innerHTML = bodyText ? bodyText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>') : '<span style="color:#536471">(투고문 없음)</span>';
+  // color handled inline above
 
   const htEl = document.getElementById('x-hashtags');
   htEl.innerHTML = hashtags.map(h=>`<span>${h}</span>`).join('');
@@ -1593,10 +1610,12 @@ function switchDetailTab(tab){
   document.getElementById('tab-history').classList.toggle('active', tab==='history');
   if(tab==='history') loadHistory(detailId);
   if(tab==='preview'){
-    currentXRegion='kr';
-    document.querySelectorAll('.x-region-btn').forEach(b=>b.classList.toggle('active',b.dataset.region==='kr'));
     const ev=events.find(e=>e.id===detailId);
-    if(ev) renderPreview(ev,'kr');
+    const soloR = ['kr','jp','en','tw'];
+    const initR = ev && soloR.includes(ev.region) ? ev.region : 'kr';
+    currentXRegion = initR;
+    document.querySelectorAll('.x-region-btn').forEach(b=>b.classList.toggle('active',b.dataset.region===initR));
+    if(ev) renderPreview(ev, initR);
   }
 }
 
@@ -1669,9 +1688,11 @@ function openDetail(id){
   else assigneeRow.style.display='none';
 
   // 미리보기 초기화 (KR 기본)
-  currentXRegion='kr';
-  document.querySelectorAll('.x-region-btn').forEach(b=>b.classList.toggle('active',b.dataset.region==='kr'));
-  renderPreview(ev, 'kr');
+  const soloRegions = ['kr','jp','en','tw'];
+  const initRegion = soloRegions.includes(ev.region) ? ev.region : 'kr';
+  currentXRegion = initRegion;
+  document.querySelectorAll('.x-region-btn').forEach(b=>b.classList.toggle('active',b.dataset.region===initRegion));
+  renderPreview(ev, initRegion);
 
   // 검수 상태 표시
   renderReviewStatus(ev);
