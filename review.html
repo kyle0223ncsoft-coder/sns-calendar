@@ -164,7 +164,7 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
 
     <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:14px">
       <button class="detail-tab active" id="tab-info" onclick="switchTab('info')">소재 정보</button>
-      <button class="detail-tab" id="tab-preview" onclick="switchTab('preview')">미리보기</button>
+      <button class="detail-tab" id="tab-preview" onclick="switchTab('preview')">X 미리보기</button>
     </div>
 
     <div id="panel-info">
@@ -661,11 +661,9 @@ function openDetail(id){
     document.getElementById('review-comment').value='';
   }
 
-  const soloR = ['kr','jp','en','tw'];
-  const initR = soloR.includes(ev.region) ? ev.region : 'kr';
-  curXRegion = initR;
-  document.querySelectorAll('.x-region-btn').forEach(b=>b.classList.toggle('active',b.dataset.region===initR));
-  renderPreview(ev, initR);
+  curXRegion='kr';
+  document.querySelectorAll('.x-region-btn').forEach(b=>b.classList.toggle('active',b.dataset.region==='kr'));
+  renderPreview(ev,'kr');
   switchTab('info');
   document.getElementById('detail-modal').classList.add('open');
 }
@@ -707,19 +705,7 @@ function renderPreview(ev, region){
   });
   const rs=document.getElementById('x-region-switcher');
   if(!plat){ if(document.getElementById('preview-none')) document.getElementById('preview-none').style.display='block'; if(rs) rs.style.display='none'; return; }
-  // 단독 권역이면 해당 버튼만 표시
-  const soloRegions = ['kr','jp','en','tw'];
-  if(rs){
-    rs.style.display='flex';
-    if(soloRegions.includes(ev.region)){
-      rs.querySelectorAll('.x-region-btn').forEach(btn => {
-        btn.style.display = btn.dataset.region === ev.region ? '' : 'none';
-      });
-      region = ev.region;
-    } else {
-      rs.querySelectorAll('.x-region-btn').forEach(btn => { btn.style.display = ''; });
-    }
-  }
+  if(rs) rs.style.display='flex';
   if(plat==='X'){ document.getElementById('preview-x').style.display='block'; renderXCard(region,ev); }
   else if(plat==='Instagram'){ document.getElementById('preview-instagram').style.display='block'; renderInstagramCard(region,ev); }
   else if(plat==='Facebook'){ document.getElementById('preview-facebook').style.display='block'; renderFacebookCard(region,ev); if(rs) rs.style.display='none'; }
@@ -736,7 +722,7 @@ function renderInstagramCard(region,ev){
   const lines=note.split('\n');
   const body=lines.filter(l=>!l.trim().startsWith('#')).join('\n').trim();
   const tags=note.match(/#\S+/g)||[];
-  document.getElementById('ins-body').innerHTML=body ? body.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>') : '(투고문 없음)';
+  document.getElementById('ins-body').textContent=body||'(투고문 없음)';
   document.getElementById('ins-hashtags').textContent=tags.join(' ');
   document.getElementById('ins-meta').textContent=ev.start_date+' · Instagram';
   const imgArea=document.getElementById('ins-image-area');
@@ -758,7 +744,7 @@ function renderFacebookCard(region,ev){
   const lines=note.split('\n');
   const body=lines.filter(l=>!l.trim().startsWith('#')).join('\n').trim();
   const tags=note.match(/#\S+/g)||[];
-  document.getElementById('fb-body').innerHTML=body ? body.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>') : '(투고문 없음)';
+  document.getElementById('fb-body').textContent=body||'(투고문 없음)';
   document.getElementById('fb-hashtags').textContent=tags.join(' ');
   const imgArea=document.getElementById('fb-image-area');
   const mediaUrl=getMediaUrlForRegion(ev,region);
@@ -794,7 +780,8 @@ function renderXCard(region,ev){
   const hashtags=hashtagLine.match(/#\S+/g)||[];
   document.getElementById('x-name').textContent=nameMap[region];
   document.getElementById('x-handle').textContent=handleMap[region];
-  document.getElementById('x-body').innerHTML=bodyText ? bodyText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>') : '<span style="color:#536471">(투고문 없음)</span>';
+  document.getElementById('x-body').textContent=bodyText||'(투고문 없음)';
+  document.getElementById('x-body').style.color=bodyText?'#0f1419':'#536471';
   const htEl=document.getElementById('x-hashtags');
   htEl.innerHTML=hashtags.map(h=>`<span>${h}</span>`).join('');
   htEl.style.display=hashtags.length?'flex':'none';
@@ -1032,11 +1019,19 @@ async function loadEvents(){
   }
 }// 실시간 동기화
 function handleRealtimePayload(payload){
-  if(payload.new && payload.old){
-    const oldEv=payload.old, newEv=payload.new;
+  if(payload.new){
+    const newEv=payload.new;
+    // payload.old가 비어있으면 로컬 캐시에서 이전 상태 가져오기
+    const cachedOld=events.find(e=>e.id===newEv.id)||{};
+    const oldEv=(payload.old && Object.keys(payload.old).length>0)
+      ? payload.old
+      : cachedOld;
+
     const myName=getMyName();
     const reviewAssignee=newEv.review_assignee||'';
     const isForMe=!myName||!reviewAssignee||reviewAssignee===myName;
+
+    // 마케터 → 검수자: 검수 요청 알림
     if(isForMe && !oldEv.review_requested && newEv.review_requested && !newEv.review_status){
       const typeLabel=newEv.review_type?(newEv.review_type==='소재'?'🎨 소재':'✍️ 투고문'):'';
       sendNotification(`🔔 검수 요청 — ${newEv.name}`,

@@ -1341,25 +1341,7 @@ function renderPreview(ev, region){
     if(regionSwitcher) regionSwitcher.style.display = 'none';
     return;
   }
-  // 단독 권역(kr/jp/en/tw)이면 해당 버튼만 표시, 공통이면 전체 표시
-  const soloRegions = ['kr','jp','en','tw'];
-  if(regionSwitcher){
-    regionSwitcher.style.display = 'flex';
-    if(soloRegions.includes(ev.region)){
-      // 해당 권역 버튼만 보이게
-      regionSwitcher.querySelectorAll('.x-region-btn').forEach(btn => {
-        btn.style.display = btn.dataset.region === ev.region ? '' : 'none';
-      });
-      // 해당 권역을 active로 설정
-      region = ev.region;
-      currentXRegion = ev.region;
-    } else {
-      // 공통이면 전부 보여주기
-      regionSwitcher.querySelectorAll('.x-region-btn').forEach(btn => {
-        btn.style.display = '';
-      });
-    }
-  }
+  if(regionSwitcher) regionSwitcher.style.display = 'flex';
 
   if(plat === 'X'){
     document.getElementById('preview-x').style.display = 'block';
@@ -1396,7 +1378,7 @@ function renderInstagramCard(region, ev){
   const lines=note.split('\n');
   const body=lines.filter(l=>!l.trim().startsWith('#')).join('\n').trim();
   const tags=note.match(/#\S+/g)||[];
-  document.getElementById('ins-body').innerHTML=body ? body.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>') : '(투고문 없음)';
+  document.getElementById('ins-body').textContent=body||'(투고문 없음)';
   document.getElementById('ins-hashtags').textContent=tags.join(' ');
   document.getElementById('ins-meta').textContent=ev.start_date+' · '+ev.start_date;
   const imgArea=document.getElementById('ins-image-area');
@@ -1421,7 +1403,7 @@ function renderFacebookCard(region, ev){
   const lines=note.split('\n');
   const body=lines.filter(l=>!l.trim().startsWith('#')).join('\n').trim();
   const tags=note.match(/#\S+/g)||[];
-  document.getElementById('fb-body').innerHTML=body ? body.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>') : '(투고문 없음)';
+  document.getElementById('fb-body').textContent=body||'(투고문 없음)';
   document.getElementById('fb-hashtags').textContent=tags.join(' ');
   const imgArea=document.getElementById('fb-image-area');
   const {mediaUrl,media,isVideo}=getMediaForPreview(ev,region);
@@ -1574,8 +1556,8 @@ function renderXCard(region) {
 
   document.getElementById('x-name').textContent = nameMap[region];
   document.getElementById('x-handle').textContent = handleMap[region];
-  document.getElementById('x-body').innerHTML = bodyText ? bodyText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>') : '<span style="color:#536471">(투고문 없음)</span>';
-  // color handled inline above
+  document.getElementById('x-body').textContent = bodyText || '(투고문 없음)';
+  document.getElementById('x-body').style.color = bodyText ? '#0f1419' : '#536471';
 
   const htEl = document.getElementById('x-hashtags');
   htEl.innerHTML = hashtags.map(h=>`<span>${h}</span>`).join('');
@@ -1610,12 +1592,10 @@ function switchDetailTab(tab){
   document.getElementById('tab-history').classList.toggle('active', tab==='history');
   if(tab==='history') loadHistory(detailId);
   if(tab==='preview'){
+    currentXRegion='kr';
+    document.querySelectorAll('.x-region-btn').forEach(b=>b.classList.toggle('active',b.dataset.region==='kr'));
     const ev=events.find(e=>e.id===detailId);
-    const soloR = ['kr','jp','en','tw'];
-    const initR = ev && soloR.includes(ev.region) ? ev.region : 'kr';
-    currentXRegion = initR;
-    document.querySelectorAll('.x-region-btn').forEach(b=>b.classList.toggle('active',b.dataset.region===initR));
-    if(ev) renderPreview(ev, initR);
+    if(ev) renderPreview(ev,'kr');
   }
 }
 
@@ -1688,11 +1668,9 @@ function openDetail(id){
   else assigneeRow.style.display='none';
 
   // 미리보기 초기화 (KR 기본)
-  const soloRegions = ['kr','jp','en','tw'];
-  const initRegion = soloRegions.includes(ev.region) ? ev.region : 'kr';
-  currentXRegion = initRegion;
-  document.querySelectorAll('.x-region-btn').forEach(b=>b.classList.toggle('active',b.dataset.region===initRegion));
-  renderPreview(ev, initRegion);
+  currentXRegion='kr';
+  document.querySelectorAll('.x-region-btn').forEach(b=>b.classList.toggle('active',b.dataset.region==='kr'));
+  renderPreview(ev, 'kr');
 
   // 검수 상태 표시
   renderReviewStatus(ev);
@@ -2004,12 +1982,18 @@ async function openReviewAssigneeDropdown(){
 
 
 function handleRealtimeUpdate(payload){
-  if(payload.new && payload.old){
-    const oldEv = payload.old;
+  if(payload.new){
     const newEv = payload.new;
+    // payload.old가 비어있으면 로컬 캐시에서 이전 상태 가져오기
+    const cachedOld = events.find(e => e.id === newEv.id) || {};
+    const oldEv = (payload.old && Object.keys(payload.old).length > 0)
+      ? payload.old
+      : cachedOld;
+
     const myName = getMyName();
     const reviewMarketer = newEv.review_marketer||'';
     const isMyEvent = !myName || !reviewMarketer || reviewMarketer === myName;
+
     if(isMyEvent){
       if(oldEv.review_status !== 'revision' && newEv.review_status === 'revision'){
         sendNotification(`🔄 수정 요청 — ${newEv.name}`, newEv.review_comment?`"${newEv.review_comment}"` : '검수자가 수정을 요청했어요.');
