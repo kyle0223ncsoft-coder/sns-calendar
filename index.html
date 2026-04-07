@@ -182,11 +182,13 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
 .btn-detail-del:hover{opacity:.75}
 /* ── 슬랙 스타일 리치 에디터 ── */
 .rich-editor-wrap{border:1px solid var(--border);border-radius:var(--rs);overflow:hidden;background:#fff}
+.rich-editor-content ul,.rich-editor-content ol{padding-left:20px;margin:4px 0}
+.rich-editor-content li{margin:2px 0}
 .rich-editor-toolbar{display:flex;align-items:center;gap:1px;padding:5px 8px;border-bottom:1px solid var(--border);background:var(--surface);flex-wrap:wrap}
 .rich-editor-toolbar button{width:26px;height:26px;border:none;background:transparent;border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-2);font-family:inherit;font-size:13px;transition:background .12s;padding:0;flex-shrink:0}
 .rich-editor-toolbar button:hover{background:rgba(0,0,0,.08)}
 .rich-editor-toolbar .toolbar-sep{width:1px;height:18px;background:var(--border);margin:0 3px;flex-shrink:0}
-.rich-editor-content{min-height:100px;max-height:260px;overflow-y:auto;padding:8px 10px;font-size:13px;line-height:1.6;color:var(--text);outline:none;word-break:break-word}
+.rich-editor-content{min-height:100px;max-height:260px;overflow-y:auto;overflow-x:hidden;padding:8px 10px;font-size:13px;line-height:1.6;color:var(--text);outline:none;word-break:break-word}
 .rich-editor-content:empty::before{content:attr(data-placeholder);color:var(--text-3);pointer-events:none}
 .rich-editor-content a{color:#2563EB;text-decoration:underline}
 .rich-editor-content code{background:rgba(0,0,0,.07);border-radius:3px;padding:1px 4px;font-family:monospace;font-size:12px}
@@ -1329,29 +1331,140 @@ function updateReqPreview() {
 }
 
 // ── 슬랙 스타일 리치 에디터 공통 JS ──
-function reFmt(id,cmd){document.getElementById(id).focus();document.execCommand(cmd,false,null);}
+function reFmt(id,cmd){
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.focus();
+  // 목록 명령은 직접 처리
+  if(cmd==='insertOrderedList'||cmd==='insertUnorderedList'){
+    reList(id, cmd==='insertOrderedList'?'ol':'ul');
+    return;
+  }
+  if(cmd==='indent'){
+    reIndent(id);
+    return;
+  }
+  document.execCommand(cmd,false,null);
+}
+function reList(id, tag) {
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.focus();
+  const sel = window.getSelection();
+  // 이미 목록 안에 있으면 해제
+  const parentList = sel?.anchorNode?.parentElement?.closest('ul,ol');
+  if(parentList && parentList.tagName.toLowerCase()===tag) {
+    // 목록 해제: li들을 p로 변환
+    const items=[...parentList.querySelectorAll('li')];
+    const frag=document.createDocumentFragment();
+    items.forEach(li=>{ const p=document.createElement('div'); p.innerHTML=li.innerHTML; frag.appendChild(p); });
+    parentList.parentNode.replaceChild(frag,parentList);
+    return;
+  }
+  // 선택 텍스트가 있으면 그걸 목록으로
+  const range = sel?.getRangeAt(0);
+  const selectedText = sel?.toString()||'';
+  const list = document.createElement(tag);
+  if(selectedText) {
+    selectedText.split('\n').filter(t=>t.trim()).forEach(t=>{ const li=document.createElement('li'); li.textContent=t; list.appendChild(li); });
+    range.deleteContents();
+  } else {
+    const li=document.createElement('li'); li.innerHTML='&#8203;'; list.appendChild(li);
+  }
+  if(range) { range.insertNode(list); }
+  else { el.appendChild(list); }
+  // 커서를 첫 li 안으로
+  const firstLi = list.querySelector('li');
+  if(firstLi) {
+    const r=document.createRange(); const s=window.getSelection();
+    r.selectNodeContents(firstLi); r.collapse(false);
+    s.removeAllRanges(); s.addRange(r);
+  }
+}
+function reIndent(id) {
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.focus();
+  const sel=window.getSelection();
+  const li=sel?.anchorNode?.parentElement?.closest('li');
+  if(li) {
+    // 목록 안: 하위 목록으로 들여쓰기
+    document.execCommand('indent',false,null);
+  } else {
+    // 목록 밖: 탭 문자 삽입
+    document.execCommand('insertHTML',false,'&nbsp;&nbsp;&nbsp;&nbsp;');
+  }
+}
 function reLink(id){
   const el=document.getElementById(id); el.focus();
-  const sel=window.getSelection(); const selectedText=sel?.toString()||'';
+  const selectedText=window.getSelection()?.toString()||'';
   const url=prompt('링크 URL을 입력하세요:','https://');
   if(!url||url==='https://') return;
   if(selectedText){ document.execCommand('createLink',false,url); el.querySelectorAll('a').forEach(a=>{if(a.href===url){a.target='_blank';a.rel='noopener';}}); }
   else { document.execCommand('insertHTML',false,`<a href="${url}" target="_blank" rel="noopener" style="color:#2563EB;text-decoration:underline">${url}</a>`); }
 }
 function reCode(id,type){
-  const el=document.getElementById(id); el.focus();
+  document.getElementById(id).focus();
   const text=window.getSelection()?.toString()||'';
   if(type==='inline') document.execCommand('insertHTML',false,`<code>${text||'코드'}</code>`);
   else document.execCommand('insertHTML',false,`<pre>${text||'코드 블록'}</pre>`);
 }
 function reBindPaste(id){
-  document.getElementById(id)?.addEventListener('paste',function(e){
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.removeEventListener('paste', el._pasteHandler||null);
+  el._pasteHandler=function(e){
     const text=e.clipboardData?.getData('text/plain')||'';
     if(/^https?:\/\//.test(text.trim())){
       e.preventDefault();
       document.execCommand('insertHTML',false,`<a href="${text.trim()}" target="_blank" rel="noopener" style="color:#2563EB;text-decoration:underline">${text.trim()}</a>`);
     }
-  });
+  };
+  el.addEventListener('paste', el._pasteHandler);
+  // 엔터 키 — 목록 자동 들여쓰기 유지
+  el.removeEventListener('keydown', el._keyHandler||null);
+  el._keyHandler=function(e){
+    // Tab → 들여쓰기/내어쓰기
+    if(e.key==='Tab'){
+      e.preventDefault();
+      document.execCommand(e.shiftKey?'outdent':'indent',false,null);
+      return;
+    }
+    // 스페이스 입력 시 줄 시작 "- " → unordered list 자동 변환
+    if(e.key===' '||e.key==='Spacebar'){
+      const sel=window.getSelection();
+      if(sel&&sel.rangeCount){
+        const range=sel.getRangeAt(0);
+        const node=range.startContainer;
+        if(node.nodeType===Node.TEXT_NODE){
+          const lineText=node.textContent.slice(0,range.startOffset);
+          if(lineText==='-'){
+            e.preventDefault();
+            node.textContent=node.textContent.slice(range.startOffset);
+            document.execCommand('insertUnorderedList',false,null);
+            return;
+          }
+        }
+      }
+    }
+    if(e.key==='Enter'&&!e.shiftKey){
+      const sel=window.getSelection();
+      const li=sel?.anchorNode?.parentElement?.closest('li');
+      if(li){
+        if(li.textContent.replace(/​/g,'').trim()===''){
+          e.preventDefault();
+          const list=li.closest('ul,ol');
+          li.remove();
+          const div=document.createElement('div'); div.innerHTML='&#8203;';
+          list.after(div);
+          const r=document.createRange(); const s=window.getSelection();
+          r.selectNodeContents(div); r.collapse(false);
+          s.removeAllRanges(); s.addRange(r);
+        }
+      }
+    }
+  };
+  el.addEventListener('keydown', el._keyHandler);
 }
 function reGetValue(id){
   const el=document.getElementById(id); if(!el) return '';
@@ -2123,9 +2236,6 @@ async function openMemberModal(){
       <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
           <div style="font-size:12px;font-weight:600;color:var(--text-2)">새 이름 등록</div>
-        </div>
-        <div style="font-size:11px;color:var(--text-3);background:var(--bg);border-radius:6px;padding:8px 10px;margin-bottom:8px;line-height:1.6">
-          💡 <b>Slack에 표기된 이름</b>을 등록해주세요.<br>알림이 올 때 이 이름으로 수신 여부를 판단해요.
         </div>
         <div style="display:flex;gap:6px">
           <input id="new-member-input" class="form-input" placeholder="예: 홍길동" style="flex:1;margin:0" value="">
