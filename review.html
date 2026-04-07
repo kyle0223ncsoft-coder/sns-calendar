@@ -475,7 +475,16 @@ function render(){
     const wd=dates.slice(w*7,w*7+7).map(d=>d.ds);
     const slots=weekSlots[w];
     const evs=filteredEvents.filter(ev=>!ev.is_highlight&&wd.some(ds=>ev.start_date<=ds&&ev.end_date>=ds));
-    evs.sort((a,b)=>{const al=new Date(a.end_date)-new Date(a.start_date);const bl=new Date(b.end_date)-new Date(b.start_date);return bl!==al?bl-al:(a.start_date<b.start_date?-1:1);});
+    evs.sort((a,b)=>{
+      const isCommon=ev=>ev.region==='common'||ev.region==='game'||ev.region==='fun';
+      const isMulti=ev=>ev.start_date!==ev.end_date;
+      const rank=ev=>isCommon(ev)?(isMulti(ev)?0:2):(isMulti(ev)?1:3);
+      const ra=rank(a),rb=rank(b);
+      if(ra!==rb) return ra-rb;
+      const al=new Date(a.end_date)-new Date(a.start_date);
+      const bl=new Date(b.end_date)-new Date(b.start_date);
+      return bl!==al?bl-al:(a.start_date<b.start_date?-1:1);
+    });
     evs.forEach(ev=>{
       let slot=0;
       while(true){const occ=slots[slot]||{};if(!wd.some((ds,di)=>ev.start_date<=ds&&ev.end_date>=ds&&occ[di]))break;slot++;}
