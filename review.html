@@ -842,6 +842,26 @@ function showToast(msg, type='default'){
   setTimeout(()=>t.classList.remove('show'),2500);
 }
 
+
+// ── 커스텀 확인 다이얼로그 ──
+let _confirmCallback = null;
+function showConfirm(msg, sub, okLabel, okColor, callback) {
+  document.getElementById('confirm-msg').textContent = msg;
+  document.getElementById('confirm-sub').textContent = sub || '';
+  const okBtn = document.getElementById('confirm-ok-btn');
+  okBtn.textContent = okLabel || '확인';
+  okBtn.style.background = okColor || '#dc2626';
+  _confirmCallback = callback;
+  document.getElementById('confirm-dialog').style.display = 'flex';
+}
+function confirmOk() {
+  document.getElementById('confirm-dialog').style.display = 'none';
+  if (_confirmCallback) { _confirmCallback(); _confirmCallback = null; }
+}
+function confirmCancel() {
+  document.getElementById('confirm-dialog').style.display = 'none';
+  _confirmCallback = null;
+}
 function requestNotificationPermission(){
   if(!('Notification' in window)) return;
   if(Notification.permission==='default') Notification.requestPermission();
@@ -925,14 +945,20 @@ async function editMemberName(id, oldName, role){
 }
 
 async function deleteMember(id, name, role){
-  if(!confirm(`"${name}" 을(를) 삭제할까요?`)) return;
-  const {error} = await sb.from('members').delete().eq('id',id);
-  if(error){ showToast('삭제 실패: '+error.message,'error'); return; }
-  if(getMyName()===name) setMyName('');
-  showToast(`${name} 삭제됐어요`,'success');
-  renderMyNameBadge();
-  closeMemberModal();
-  openMemberModal();
+  showConfirm(
+    `"${name}" 을(를) 삭제할까요?`,
+    '삭제된 멤버는 복구할 수 없어요.',
+    '삭제', '#dc2626',
+    async () => {
+      const {error} = await sb.from('members').delete().eq('id',id);
+      if(error){ showToast('삭제 실패: '+error.message,'error'); return; }
+      if(getMyName()===name) setMyName('');
+      showToast(`${name} 삭제됐어요`,'success');
+      renderMyNameBadge();
+      closeMemberModal();
+      openMemberModal();
+    }
+  );
 }
 
 function selectMemberName(name){
@@ -1048,5 +1074,16 @@ renderMyNameBadge();
 loadReviewerDropdown();
 loadEvents();
 </script>
+<!-- 커스텀 확인 다이얼로그 -->
+<div id="confirm-dialog" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:12px;padding:24px;width:280px;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+    <div id="confirm-msg" style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:8px">정말 삭제할까요?</div>
+    <div id="confirm-sub" style="font-size:13px;color:var(--text-3);margin-bottom:20px">삭제된 항목은 복구할 수 없어요.</div>
+    <div style="display:flex;gap:8px">
+      <button onclick="confirmCancel()" style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text-2);font-size:14px;font-weight:500;cursor:pointer;font-family:inherit">취소</button>
+      <button id="confirm-ok-btn" onclick="confirmOk()" style="flex:1;padding:10px;border-radius:8px;border:none;background:#dc2626;color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">삭제</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
