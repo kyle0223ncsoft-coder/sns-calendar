@@ -764,8 +764,16 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
       </select>
     </div>
     <div class="form-row">
-      <label class="form-label">검수 요청 코멘트</label>
-      <textarea class="form-textarea" id="review-request-comment" placeholder="검수자에게 전달할 내용을 입력하세요 (선택)" style="min-height:80px"></textarea>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+        <label class="form-label" style="margin:0">검수 요청 코멘트</label>
+        <div style="display:flex;gap:4px">
+          <button type="button" id="req-tab-write" onclick="switchReqTab('write')" style="padding:2px 10px;font-size:11px;font-weight:600;border-radius:12px;border:1.5px solid var(--border);background:var(--text);color:#fff;cursor:pointer;font-family:inherit">작성</button>
+          <button type="button" id="req-tab-preview" onclick="switchReqTab('preview')" style="padding:2px 10px;font-size:11px;font-weight:600;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-3);cursor:pointer;font-family:inherit">미리보기</button>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--text-3);margin-bottom:5px">**굵게** *기울임* 하이퍼링크(URL 그대로 붙여넣기)</div>
+      <textarea class="form-textarea" id="review-request-comment" placeholder="검수자에게 전달할 내용을 입력하세요 (선택)&#10;URL을 붙여넣으면 자동으로 링크가 생성돼요" style="min-height:80px;display:block" oninput="updateReqPreview()"></textarea>
+      <div id="req-preview" style="display:none;min-height:60px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--rs);font-size:13px;line-height:1.6;color:var(--text);background:var(--surface);word-break:break-all;overflow-wrap:anywhere;white-space:pre-wrap"></div>
     </div>
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeReviewRequest()">취소</button>
@@ -1256,6 +1264,46 @@ function openEdit(id){
   }
   document.getElementById('btn-del').style.display='block';
   document.getElementById('modal').classList.add('open');
+}
+
+// ── 마크다운 렌더링 (URL 링크화, bold, italic, 줄바꿈) ──
+function renderMarkdown(text) {
+  if (!text) return '';
+  let h = text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    // bold
+    .replace(/\*\*(.+?)\*\*/g,'<b>$1</b>')
+    // italic
+    .replace(/\*(.+?)\*/g,'<i>$1</i>')
+    // URL → 클릭 가능한 링크
+    .replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener" style="color:#2563EB;text-decoration:underline;word-break:break-all">$1</a>')
+    // 줄바꿈
+    .replace(/\n/g,'<br>');
+  return h;
+}
+
+function switchReqTab(tab) {
+  const ta = document.getElementById('review-request-comment');
+  const pv = document.getElementById('req-preview');
+  const btnW = document.getElementById('req-tab-write');
+  const btnP = document.getElementById('req-tab-preview');
+  if (!ta || !pv) return;
+  if (tab === 'write') {
+    ta.style.display = 'block'; pv.style.display = 'none';
+    btnW.style.background = 'var(--text)'; btnW.style.color = '#fff';
+    btnP.style.background = 'var(--surface)'; btnP.style.color = 'var(--text-3)';
+  } else {
+    pv.innerHTML = renderMarkdown(ta.value) || '<span style="color:var(--text-3)">내용 없음</span>';
+    ta.style.display = 'none'; pv.style.display = 'block';
+    btnW.style.background = 'var(--surface)'; btnW.style.color = 'var(--text-3)';
+    btnP.style.background = 'var(--text)'; btnP.style.color = '#fff';
+  }
+}
+function updateReqPreview() {
+  const pv = document.getElementById('req-preview');
+  if (pv && pv.style.display !== 'none') {
+    pv.innerHTML = renderMarkdown(document.getElementById('review-request-comment').value);
+  }
 }
 async function toggleLive(){
   const ev=events.find(e=>e.id===detailId);
@@ -1782,14 +1830,14 @@ function renderReviewStatus(ev){
     const typeTag=ev.review_type?`<span style="background:#F59E0B;color:#fff;font-size:10px;font-weight:600;padding:1px 7px;border-radius:20px;margin-left:4px">${ev.review_type==='소재'?'🎨 소재':'✍️ 투고문'}</span>`:'';
     el.innerHTML=`<div style="padding:8px 10px;background:#FFF9E6;border:1px solid #F59E0B;border-radius:var(--rs);font-size:12px;color:#92400E;margin-bottom:8px">
       <div style="display:flex;align-items:center;margin-bottom:${ev.review_request_comment?'4px':'0'}"><span style="font-weight:600">🔔 검수 요청 중</span>${typeTag}<span style="color:#B45309;font-size:11px;margin-left:auto">${ev.review_requested_at?formatNoteTime(ev.review_requested_at):''}</span></div>
-      ${ev.review_request_comment?`<div style="color:#78350F">${ev.review_request_comment}</div>`:''}
+      ${ev.review_request_comment?`<div style="color:#78350F;word-break:break-all;overflow-wrap:anywhere;white-space:pre-wrap">${renderMarkdown(ev.review_request_comment)}</div>`:''}
     </div>`;
     if(btn){btn.textContent='🔕 검수 요청 취소';btn.style.background='#6b7280';btn.style.borderColor='#6b7280';}
     if(liveBtn) liveBtn.style.display='none';
   } else if(ev.review_status==='approved'){
     el.innerHTML=`<div style="padding:8px 10px;background:#dcfce7;border:1px solid #86efac;border-radius:var(--rs);font-size:12px;color:#16a34a;margin-bottom:8px">
       <div style="font-weight:600;margin-bottom:2px">✅ 승인됨</div>
-      ${ev.review_comment?`<div style="margin-bottom:2px">${ev.review_comment}</div>`:''}
+      ${ev.review_comment?`<div style="margin-bottom:2px;word-break:break-all;overflow-wrap:anywhere;white-space:pre-wrap">${renderMarkdown(ev.review_comment)}</div>`:''}
       ${ev.reviewer?`<div style="opacity:.7;font-size:11px">검수자: ${ev.reviewer}</div>`:''}
     </div>`;
     if(btn){btn.textContent='🔔 재검수 요청';btn.style.background='#F59E0B';btn.style.borderColor='#F59E0B';}
@@ -1801,7 +1849,7 @@ function renderReviewStatus(ev){
   } else if(ev.review_status==='revision'){
     el.innerHTML=`<div style="padding:8px 10px;background:#fee2e2;border:1px solid #fca5a5;border-radius:var(--rs);font-size:12px;color:#dc2626;margin-bottom:8px">
       <div style="font-weight:600;margin-bottom:2px">🔄 수정 요청</div>
-      ${ev.review_comment?`<div style="margin-bottom:2px">${ev.review_comment}</div>`:''}
+      ${ev.review_comment?`<div style="margin-bottom:2px;word-break:break-all;overflow-wrap:anywhere;white-space:pre-wrap">${renderMarkdown(ev.review_comment)}</div>`:''}
       ${ev.reviewer?`<div style="opacity:.7;font-size:11px">검수자: ${ev.reviewer}</div>`:''}
     </div>`;
     if(btn){btn.textContent='🔔 재검수 요청';btn.style.background='#F59E0B';btn.style.borderColor='#F59E0B';}
@@ -2036,14 +2084,20 @@ async function editMemberName(id, oldName, role){
 }
 
 async function deleteMember(id, name, role){
-  if(!confirm(`"${name}" 을(를) 삭제할까요?`)) return;
-  const {error} = await sb.from('members').delete().eq('id',id);
-  if(error){ showToast('삭제 실패: '+error.message,'error'); return; }
-  if(getMyName()===name) setMyName('');
-  showToast(`${name} 삭제됐어요`,'success');
-  renderMyNameBadge();
-  closeMemberModal();
-  openMemberModal();
+  showConfirm(
+    `"${name}" 을(를) 삭제할까요?`,
+    '삭제된 멤버는 복구할 수 없어요.',
+    '삭제', '#dc2626',
+    async () => {
+      const {error} = await sb.from('members').delete().eq('id',id);
+      if(error){ showToast('삭제 실패: '+error.message,'error'); return; }
+      if(getMyName()===name) setMyName('');
+      showToast(`${name} 삭제됐어요`,'success');
+      renderMyNameBadge();
+      closeMemberModal();
+      openMemberModal();
+    }
+  );
 }
 
 function closeMemberModal(){
