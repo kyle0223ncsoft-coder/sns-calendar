@@ -172,7 +172,8 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
 .detail-label{font-size:11px;font-weight:500;color:var(--text-3);min-width:48px;padding-top:1px}
 .detail-val{color:var(--text);line-height:1.5;flex:1}
 .detail-plat-icons{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
-.detail-actions{display:flex;gap:8px;margin-top:18px}
+.detail-actions{display:flex;flex-direction:column;gap:6px;margin-top:18px}
+.detail-actions-row{display:flex;gap:6px}
 .btn-detail-edit{flex:1;padding:9px;border-radius:var(--rs);font-size:13px;font-weight:500;font-family:inherit;background:var(--text);color:#fff;border:none;cursor:pointer;transition:opacity .15s}
 .btn-detail-edit:hover{opacity:.8}
 .btn-detail-copy{padding:9px 16px;border-radius:var(--rs);font-size:13px;font-weight:500;font-family:inherit;background:var(--surface);color:var(--text-2);border:1px solid var(--border);cursor:pointer;transition:opacity .15s}
@@ -650,11 +651,23 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
     </div>
 
     <div class="detail-actions">
-      <button class="btn-detail-del" onclick="deleteFromDetail()">삭제</button>
-      <button class="btn-detail-copy" onclick="copyEvent()">복사해서 추가</button>
-      <button id="btn-live" onclick="toggleLive()" style="display:none;align-items:center;gap:4px;padding:9px 16px;border-radius:var(--rs);border:none;background:#2563EB;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">📡 라이브</button>
-      <button id="btn-request-review" class="btn-detail-edit" onclick="openReviewRequest()" style="background:#F59E0B;border-color:#F59E0B">🔔 검수 요청</button>
-      <button class="btn-detail-edit" onclick="editFromDetail()">수정</button>
+      <!-- 상단 행: 상태에 따라 JS로 제어 -->
+      <div class="detail-actions-row" id="detail-btn-row-top">
+        <button class="btn-detail-copy" id="btn-copy" onclick="copyEvent()" title="복사해서 추가">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        </button>
+        <button id="btn-live" onclick="toggleLive()" style="display:none;flex:1;padding:9px;border-radius:var(--rs);border:none;background:#2563EB;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">📡 라이브</button>
+        <button id="btn-request-review" class="btn-detail-edit" onclick="openReviewRequest()" style="flex:2;background:#F59E0B;border-color:#F59E0B">🔔 검수 요청</button>
+        <button class="btn-detail-edit" id="btn-edit-detail" onclick="editFromDetail()" style="flex:1">수정</button>
+      </div>
+      <!-- 라이브 상태일 때 상단 행 대체 -->
+      <div class="detail-actions-row" id="detail-btn-row-live" style="display:none">
+        <button class="btn-detail-edit" onclick="toggleLive()" style="flex:1;background:#6b7280;border-color:#6b7280">취소 및 수정</button>
+      </div>
+      <!-- 하단: 삭제 (항상) -->
+      <div class="detail-actions-row">
+        <button class="btn-detail-del" onclick="deleteFromDetail()" style="flex:1">삭제</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1099,7 +1112,7 @@ function render(){
               const liveBadge=ev.is_live
                 ? `<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#2563EB;color:#fff;flex-shrink:0;margin-right:2px">라이브</span>`
                 : '';
-              const rvBadge=rvStatus==='approved'
+              const rvBadge=rvStatus==='approved' && !ev.is_live
                 ? `<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#16a34a;color:#fff;flex-shrink:0;margin-right:2px">승인</span>`
                 : rvStatus==='revision'
                 ? `<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#dc2626;color:#fff;flex-shrink:0;margin-right:2px">수정요청</span>`
@@ -1712,15 +1725,33 @@ function openDetail(id){
 function renderReviewStatus(ev){
   const el=document.getElementById('review-status-display');
   const btn=document.getElementById('btn-request-review');
+  const rowTop=document.getElementById('detail-btn-row-top');
+  const rowLive=document.getElementById('detail-btn-row-live');
+  const liveBtn=document.getElementById('btn-live');
   if(!el) return;
+
+  // 라이브 상태일 때 → 상단 행 숨기고 라이브 행만 표시
+  if(ev.is_live){
+    if(rowTop) rowTop.style.display='none';
+    if(rowLive) rowLive.style.display='flex';
+    el.innerHTML=`<div style="padding:8px 10px;background:#dbeafe;border:1px solid #93c5fd;border-radius:var(--rs);font-size:12px;color:#1d4ed8;margin-bottom:8px">
+      <div style="font-weight:600;margin-bottom:2px">📡 라이브 중</div>
+    </div>`;
+    return;
+  }
+
+  // 라이브 아닐 때 → 상단 행 표시
+  if(rowTop) rowTop.style.display='flex';
+  if(rowLive) rowLive.style.display='none';
+
   if(ev.review_requested && !ev.review_status){
-    // 검수 대기 중
     const typeTag=ev.review_type?`<span style="background:#F59E0B;color:#fff;font-size:10px;font-weight:600;padding:1px 7px;border-radius:20px;margin-left:4px">${ev.review_type==='소재'?'🎨 소재':'✍️ 투고문'}</span>`:'';
     el.innerHTML=`<div style="padding:8px 10px;background:#FFF9E6;border:1px solid #F59E0B;border-radius:var(--rs);font-size:12px;color:#92400E;margin-bottom:8px">
       <div style="display:flex;align-items:center;margin-bottom:${ev.review_request_comment?'4px':'0'}"><span style="font-weight:600">🔔 검수 요청 중</span>${typeTag}<span style="color:#B45309;font-size:11px;margin-left:auto">${ev.review_requested_at?formatNoteTime(ev.review_requested_at):''}</span></div>
       ${ev.review_request_comment?`<div style="color:#78350F">${ev.review_request_comment}</div>`:''}
     </div>`;
     if(btn){btn.textContent='🔕 검수 요청 취소';btn.style.background='#6b7280';btn.style.borderColor='#6b7280';}
+    if(liveBtn) liveBtn.style.display='none';
   } else if(ev.review_status==='approved'){
     el.innerHTML=`<div style="padding:8px 10px;background:#dcfce7;border:1px solid #86efac;border-radius:var(--rs);font-size:12px;color:#16a34a;margin-bottom:8px">
       <div style="font-weight:600;margin-bottom:2px">✅ 승인됨</div>
@@ -1728,25 +1759,23 @@ function renderReviewStatus(ev){
       ${ev.reviewer?`<div style="opacity:.7;font-size:11px">검수자: ${ev.reviewer}</div>`:''}
     </div>`;
     if(btn){btn.textContent='🔔 재검수 요청';btn.style.background='#F59E0B';btn.style.borderColor='#F59E0B';}
-    const liveBtn=document.getElementById('btn-live');
     if(liveBtn){
       liveBtn.style.display='flex';
-      liveBtn.textContent=ev.is_live?'📡 라이브 완료':'📡 라이브';
-      liveBtn.style.background=ev.is_live?'#1d4ed8':'#2563EB';
-      liveBtn.style.borderColor=ev.is_live?'#1d4ed8':'#2563EB';
+      liveBtn.textContent='📡 라이브';
+      liveBtn.style.background='#2563EB';
     }
   } else if(ev.review_status==='revision'){
-    const liveBtnR=document.getElementById('btn-live');
-    if(liveBtnR) liveBtnR.style.display='none';
     el.innerHTML=`<div style="padding:8px 10px;background:#fee2e2;border:1px solid #fca5a5;border-radius:var(--rs);font-size:12px;color:#dc2626;margin-bottom:8px">
       <div style="font-weight:600;margin-bottom:2px">🔄 수정 요청</div>
       ${ev.review_comment?`<div style="margin-bottom:2px">${ev.review_comment}</div>`:''}
       ${ev.reviewer?`<div style="opacity:.7;font-size:11px">검수자: ${ev.reviewer}</div>`:''}
     </div>`;
     if(btn){btn.textContent='🔔 재검수 요청';btn.style.background='#F59E0B';btn.style.borderColor='#F59E0B';}
+    if(liveBtn) liveBtn.style.display='none';
   } else {
     el.innerHTML='';
     if(btn){btn.textContent='🔔 검수 요청';btn.style.background='#F59E0B';btn.style.borderColor='#F59E0B';}
+    if(liveBtn) liveBtn.style.display='none';
   }
 }
 
