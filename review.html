@@ -797,6 +797,7 @@ function renderXCard(region,ev){
   const hashtagLine=lines.filter(l=>l.trim().startsWith('#')).join(' ');
   const bodyText=lines.filter(l=>!l.trim().startsWith('#')).join('\n').trim();
   const hashtags=hashtagLine.match(/#\S+/g)||[];
+  document.getElementById('x-avatar').src=AVATAR_SRC||'';
   document.getElementById('x-name').textContent=nameMap[region];
   document.getElementById('x-handle').textContent=handleMap[region];
   document.getElementById('x-body').innerHTML=bodyText?bodyText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'):'<span style="color:#536471">(투고문 없음)</span>';
