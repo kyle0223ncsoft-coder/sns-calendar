@@ -180,6 +180,18 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
 .btn-detail-copy:hover{opacity:.7}
 .btn-detail-del{padding:9px 14px;border-radius:var(--rs);font-size:13px;font-weight:500;font-family:inherit;background:#FEE2E2;color:#991B1B;border:1px solid #FECACA;cursor:pointer;transition:opacity .15s}
 .btn-detail-del:hover{opacity:.75}
+/* ── 슬랙 스타일 리치 에디터 ── */
+.rich-editor-wrap{border:1px solid var(--border);border-radius:var(--rs);overflow:hidden;background:#fff}
+.rich-editor-toolbar{display:flex;align-items:center;gap:1px;padding:5px 8px;border-bottom:1px solid var(--border);background:var(--surface);flex-wrap:wrap}
+.rich-editor-toolbar button{width:26px;height:26px;border:none;background:transparent;border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-2);font-family:inherit;font-size:13px;transition:background .12s;padding:0;flex-shrink:0}
+.rich-editor-toolbar button:hover{background:rgba(0,0,0,.08)}
+.rich-editor-toolbar .toolbar-sep{width:1px;height:18px;background:var(--border);margin:0 3px;flex-shrink:0}
+.rich-editor-content{min-height:100px;max-height:260px;overflow-y:auto;padding:8px 10px;font-size:13px;line-height:1.6;color:var(--text);outline:none;word-break:break-word}
+.rich-editor-content:empty::before{content:attr(data-placeholder);color:var(--text-3);pointer-events:none}
+.rich-editor-content a{color:#2563EB;text-decoration:underline}
+.rich-editor-content code{background:rgba(0,0,0,.07);border-radius:3px;padding:1px 4px;font-family:monospace;font-size:12px}
+.rich-editor-content pre{background:rgba(0,0,0,.06);border-radius:4px;padding:8px 10px;font-family:monospace;font-size:12px;white-space:pre-wrap;margin:4px 0}
+
 
 /* help modal */
 .help-section{display:flex;gap:14px;align-items:flex-start;padding:14px 0;border-bottom:1px solid var(--border)}
@@ -739,7 +751,7 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
 
 <!-- Review Request Modal -->
 <div class="modal-bg" id="review-request-modal">
-  <div class="modal" style="max-width:380px">
+  <div class="modal" style="max-width:560px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
       <div class="modal-title" style="margin:0">🔔 검수 요청</div>
       <button onclick="closeReviewRequest()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-3);line-height:1">×</button>
@@ -764,16 +776,25 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
       </select>
     </div>
     <div class="form-row">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
-        <label class="form-label" style="margin:0">검수 요청 코멘트</label>
-        <div style="display:flex;gap:4px">
-          <button type="button" id="req-tab-write" onclick="switchReqTab('write')" style="padding:2px 10px;font-size:11px;font-weight:600;border-radius:12px;border:1.5px solid var(--border);background:var(--text);color:#fff;cursor:pointer;font-family:inherit">작성</button>
-          <button type="button" id="req-tab-preview" onclick="switchReqTab('preview')" style="padding:2px 10px;font-size:11px;font-weight:600;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-3);cursor:pointer;font-family:inherit">미리보기</button>
+      <label class="form-label">검수 요청 코멘트</label>
+      <div class="rich-editor-wrap">
+        <div class="rich-editor-toolbar">
+          <button type="button" title="굵게" onclick="reFmt('req-editor','bold')"><b>B</b></button>
+          <button type="button" title="기울임" onclick="reFmt('req-editor','italic')"><i style="font-style:italic">I</i></button>
+          <button type="button" title="밑줄" onclick="reFmt('req-editor','underline')"><u>U</u></button>
+          <button type="button" title="취소선" onclick="reFmt('req-editor','strikeThrough')"><s>S</s></button>
+          <div class="toolbar-sep"></div>
+          <button type="button" title="링크 추가" onclick="reLink('req-editor')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg></button>
+          <div class="toolbar-sep"></div>
+          <button type="button" title="순서있는 목록" onclick="reFmt('req-editor','insertOrderedList')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><text x="2" y="8" font-size="7" fill="currentColor" stroke="none">1.</text><text x="2" y="14" font-size="7" fill="currentColor" stroke="none">2.</text><text x="2" y="20" font-size="7" fill="currentColor" stroke="none">3.</text></svg></button>
+          <button type="button" title="순서없는 목록" onclick="reFmt('req-editor','insertUnorderedList')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="18" r="1.5" fill="currentColor" stroke="none"/></svg></button>
+          <button type="button" title="들여쓰기" onclick="reFmt('req-editor','indent')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/><polyline points="3 9 6 12 3 15"/></svg></button>
+          <div class="toolbar-sep"></div>
+          <button type="button" title="인라인 코드" onclick="reCode('req-editor','inline')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></button>
+          <button type="button" title="코드 블록" onclick="reCode('req-editor','block')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/><line x1="2" y1="21" x2="22" y2="21"/></svg></button>
         </div>
+        <div class="rich-editor-content" id="req-editor" contenteditable="true" data-placeholder="검수자에게 전달할 내용을 입력하세요 (선택) — URL 붙여넣기 → 자동 링크"></div>
       </div>
-      <div style="font-size:11px;color:var(--text-3);margin-bottom:5px">**굵게** *기울임* 하이퍼링크(URL 그대로 붙여넣기)</div>
-      <textarea class="form-textarea" id="review-request-comment" placeholder="검수자에게 전달할 내용을 입력하세요 (선택)&#10;URL을 붙여넣으면 자동으로 링크가 생성돼요" style="min-height:80px;display:block" oninput="updateReqPreview()"></textarea>
-      <div id="req-preview" style="display:none;min-height:60px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--rs);font-size:13px;line-height:1.6;color:var(--text);background:var(--surface);word-break:break-all;overflow-wrap:anywhere;white-space:pre-wrap"></div>
     </div>
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeReviewRequest()">취소</button>
@@ -1190,6 +1211,7 @@ function openAdd(ds){
   document.getElementById('modal-title').textContent='소재 추가';
   document.getElementById('f-name').value='';
   document.getElementById('f-post-time').value='';
+  if(document.getElementById('req-editor')) document.getElementById('req-editor').innerHTML='';
   document.getElementById('f-region').value='common';
   document.getElementById('f-start').value=ds||today.toISOString().slice(0,10);
   document.getElementById('f-end').value=ds||today.toISOString().slice(0,10);
@@ -1304,6 +1326,53 @@ function updateReqPreview() {
   if (pv && pv.style.display !== 'none') {
     pv.innerHTML = renderMarkdown(document.getElementById('review-request-comment').value);
   }
+}
+
+// ── 슬랙 스타일 리치 에디터 공통 JS ──
+function reFmt(id,cmd){document.getElementById(id).focus();document.execCommand(cmd,false,null);}
+function reLink(id){
+  const el=document.getElementById(id); el.focus();
+  const sel=window.getSelection(); const selectedText=sel?.toString()||'';
+  const url=prompt('링크 URL을 입력하세요:','https://');
+  if(!url||url==='https://') return;
+  if(selectedText){ document.execCommand('createLink',false,url); el.querySelectorAll('a').forEach(a=>{if(a.href===url){a.target='_blank';a.rel='noopener';}}); }
+  else { document.execCommand('insertHTML',false,`<a href="${url}" target="_blank" rel="noopener" style="color:#2563EB;text-decoration:underline">${url}</a>`); }
+}
+function reCode(id,type){
+  const el=document.getElementById(id); el.focus();
+  const text=window.getSelection()?.toString()||'';
+  if(type==='inline') document.execCommand('insertHTML',false,`<code>${text||'코드'}</code>`);
+  else document.execCommand('insertHTML',false,`<pre>${text||'코드 블록'}</pre>`);
+}
+function reBindPaste(id){
+  document.getElementById(id)?.addEventListener('paste',function(e){
+    const text=e.clipboardData?.getData('text/plain')||'';
+    if(/^https?:\/\//.test(text.trim())){
+      e.preventDefault();
+      document.execCommand('insertHTML',false,`<a href="${text.trim()}" target="_blank" rel="noopener" style="color:#2563EB;text-decoration:underline">${text.trim()}</a>`);
+    }
+  });
+}
+function reGetValue(id){
+  const el=document.getElementById(id); if(!el) return '';
+  return el.innerHTML
+    .replace(/<b>(.*?)<\/b>/gi,'**$1**').replace(/<strong>(.*?)<\/strong>/gi,'**$1**')
+    .replace(/<i>(.*?)<\/i>/gi,'*$1*').replace(/<em>(.*?)<\/em>/gi,'*$1*')
+    .replace(/<u>(.*?)<\/u>/gi,'$1').replace(/<s>(.*?)<\/s>/gi,'~~$1~~')
+    .replace(/<a [^>]*href="([^"]+)"[^>]*>([^<]*)<\/a>/gi,'[$2]($1)')
+    .replace(/<code>(.*?)<\/code>/gi,'`$1`')
+    .replace(/<pre>([\s\S]*?)<\/pre>/gi,'```\n$1\n```')
+    .replace(/<li>(.*?)<\/li>/gi,'• $1\n')
+    .replace(/<br\s*\/?>/gi,'\n')
+    .replace(/<p>/gi,'').replace(/<\/p>/gi,'\n')
+    .replace(/<div>/gi,'').replace(/<\/div>/gi,'\n')
+    .replace(/<[^>]+>/g,'')
+    .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ')
+    .trim();
+}
+function reSetValue(id,md){
+  const el=document.getElementById(id); if(!el) return;
+  el.innerHTML=md?renderMarkdown(md):'';
 }
 async function toggleLive(){
   const ev=events.find(e=>e.id===detailId);
@@ -1872,7 +1941,7 @@ function openReviewRequest(){
   // 모달 초기화
   document.querySelectorAll('input[name="review-type"]').forEach(r=>r.checked=false);
   selectReviewType(null);
-  document.getElementById('review-request-comment').value=ev.review_request_comment||'';
+  reSetValue('req-editor', ev.review_request_comment||''); setTimeout(()=>reBindPaste('req-editor'),50);
   // 기존 review_type 복원
   if(ev.review_type){
     const radio=document.querySelector(`input[name="review-type"][value="${ev.review_type}"]`);
@@ -1910,7 +1979,7 @@ function selectReviewType(type){
 async function submitReviewRequest(){
   const type=document.querySelector('input[name="review-type"]:checked')?.value;
   if(!type){showToast('검수 유형을 선택해주세요','error');return;}
-  const comment=document.getElementById('review-request-comment').value.trim();
+  const comment=reGetValue('req-editor');
   const reviewAssignee=document.getElementById('review-assignee-select').value||null;
   const {error}=await sb.from('events').update({
     review_requested:true,
