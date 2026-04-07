@@ -1019,19 +1019,11 @@ async function loadEvents(){
   }
 }// 실시간 동기화
 function handleRealtimePayload(payload){
-  if(payload.new){
-    const newEv=payload.new;
-    // payload.old가 비어있으면 로컬 캐시에서 이전 상태 가져오기
-    const cachedOld=events.find(e=>e.id===newEv.id)||{};
-    const oldEv=(payload.old && Object.keys(payload.old).length>0)
-      ? payload.old
-      : cachedOld;
-
+  if(payload.new && payload.old){
+    const oldEv=payload.old, newEv=payload.new;
     const myName=getMyName();
     const reviewAssignee=newEv.review_assignee||'';
     const isForMe=!myName||!reviewAssignee||reviewAssignee===myName;
-
-    // 마케터 → 검수자: 검수 요청 알림
     if(isForMe && !oldEv.review_requested && newEv.review_requested && !newEv.review_status){
       const typeLabel=newEv.review_type?(newEv.review_type==='소재'?'🎨 소재':'✍️ 투고문'):'';
       sendNotification(`🔔 검수 요청 — ${newEv.name}`,
@@ -1044,7 +1036,7 @@ function handleRealtimePayload(payload){
 
 function subscribeRealtime(){
   const ch = sb.channel('events-review');
-  ch.on('postgres_changes',{event:'UPDATE',schema:'public',table:'events'},handleRealtimePayload)
+  ch.on('postgres_changes',{event:'UPDATE',schema:'public',table:'events'},(payload)=>handleRealtimePayload(payload))
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'events'},()=>loadEvents())
     .subscribe();
 }

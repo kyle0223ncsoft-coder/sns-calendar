@@ -1982,18 +1982,12 @@ async function openReviewAssigneeDropdown(){
 
 
 function handleRealtimeUpdate(payload){
-  if(payload.new){
+  if(payload.new && payload.old){
+    const oldEv = payload.old;
     const newEv = payload.new;
-    // payload.old가 비어있으면 로컬 캐시에서 이전 상태 가져오기
-    const cachedOld = events.find(e => e.id === newEv.id) || {};
-    const oldEv = (payload.old && Object.keys(payload.old).length > 0)
-      ? payload.old
-      : cachedOld;
-
     const myName = getMyName();
     const reviewMarketer = newEv.review_marketer||'';
     const isMyEvent = !myName || !reviewMarketer || reviewMarketer === myName;
-
     if(isMyEvent){
       if(oldEv.review_status !== 'revision' && newEv.review_status === 'revision'){
         sendNotification(`🔄 수정 요청 — ${newEv.name}`, newEv.review_comment?`"${newEv.review_comment}"` : '검수자가 수정을 요청했어요.');
@@ -2010,7 +2004,7 @@ function handleRealtimeUpdate(payload){
 
 function subscribeRealtime(){
   const ch = sb.channel('events-changes');
-  ch.on('postgres_changes',{event:'UPDATE',schema:'public',table:'events'},handleRealtimeUpdate)
+  ch.on('postgres_changes',{event:'UPDATE',schema:'public',table:'events'},(payload)=>handleRealtimeUpdate(payload))
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'events'},()=>loadEvents())
     .subscribe();
 }
