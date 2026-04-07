@@ -172,7 +172,10 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
       <div id="detail-badge" style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;border:1.5px solid"></div>
       <button onclick="closeDetail()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-3);line-height:1">×</button>
     </div>
-    <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:14px" id="detail-name"></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+      <div style="font-size:16px;font-weight:600;color:var(--text)" id="detail-name"></div>
+      <span id="detail-live-badge" style="display:none;align-items:center;gap:3px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:#2563EB;color:#fff;flex-shrink:0">📡 라이브</span>
+    </div>
 
     <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:14px">
       <button class="detail-tab active" id="tab-info" onclick="switchTab('info')">소재 정보</button>
@@ -634,6 +637,11 @@ function openDetail(id){
   document.getElementById('detail-badge').textContent=REGION_LABELS[ev.region]||ev.region;
   document.getElementById('detail-badge').style.cssText=`font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;border:1.5px solid ${b.border};background:${b.bg};color:${b.color}`;
   document.getElementById('detail-name').textContent=ev.name;
+  const liveBadge=document.getElementById('detail-live-badge');
+  if(liveBadge) liveBadge.style.display=ev.is_live?'inline-flex':'none';
+  // 라이브 상태 뱃지
+  const liveIndicator=document.getElementById('detail-live-badge');
+  if(liveIndicator) liveIndicator.style.display=ev.is_live?'inline-flex':'none';
   document.getElementById('detail-date').textContent=ev.start_date===ev.end_date?ev.start_date:`${ev.start_date} ~ ${ev.end_date}`;
   const plats=(ev.platform||'').split(',').map(p=>p.trim()).filter(Boolean);
   const platRow=document.getElementById('detail-plat-row');
@@ -657,6 +665,44 @@ function openDetail(id){
   });
   document.getElementById('detail-tw-row').style.display=isTW?'flex':'none';
   document.getElementById('detail-note-div-tw').style.display=isTW?'block':'none';
+
+  // SNS 링크 버튼 생성
+  const SNS_URLS = {
+    'X':       { kr:'https://x.com/BREAKERS_korea', jp:'https://x.com/BREAKERS_japan', en:'https://x.com/Breakers_EN', tw:null, common:'https://x.com/BREAKERS_korea' },
+    'Instagram':{ en:'https://www.instagram.com/breakers_en/' },
+    'Youtube': { kr:'https://www.youtube.com/@BREAKERS_KRofficial', jp:'https://www.youtube.com/@BREAKERS_official', en:'https://www.youtube.com/@BREAKERS_EN' },
+    'Facebook':{ tw:'https://www.facebook.com/LimitZeroBreakersOfficial.TW/', common:'https://www.facebook.com/LimitZeroBreakersOfficial.TW/' },
+    'Discord': { kr:'https://discord.com/invite/KSWRAbCzse', jp:'https://discord.com/invite/KSWRAbCzse', en:'https://discord.com/invite/KSWRAbCzse', tw:'https://discord.com/invite/KSWRAbCzse', common:'https://discord.com/invite/KSWRAbCzse' },
+  };
+  const platsForLink = (ev.platform||'').split(',').map(p=>p.trim()).filter(Boolean);
+  const evRegion = ev.region==='game'||ev.region==='fun'?'common':ev.region;
+  // 각 권역별 기존 SNS 버튼 제거 후 새로 삽입
+  ['kr','jp','en','tw'].forEach(reg=>{
+    const rowEl=document.getElementById(`detail-${reg}-row`); if(!rowEl) return;
+    rowEl.querySelectorAll('.sns-link-btn').forEach(b=>b.remove());
+    const links=[];
+    platsForLink.forEach(plat=>{
+      const platUrls=SNS_URLS[plat]; if(!platUrls) return;
+      const url=platUrls[reg]||platUrls[evRegion]||null;
+      if(url) links.push({plat,url});
+    });
+    if(!links.length) return;
+    const btnWrap=document.createElement('div');
+    btnWrap.className='sns-link-btn';
+    btnWrap.style.cssText='display:flex;gap:4px;flex-wrap:wrap;margin-top:6px';
+    links.forEach(({plat,url})=>{
+      const a=document.createElement('a');
+      a.href=url; a.target='_blank'; a.rel='noopener';
+      a.style.cssText='display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);font-size:11px;font-weight:600;text-decoration:none;cursor:pointer;transition:background .12s';
+      a.onmouseover=()=>a.style.background='rgba(0,0,0,.06)';
+      a.onmouseout=()=>a.style.background='var(--surface)';
+      a.innerHTML=(PLATFORM_ICONS[plat]||'')+'<span>'+plat+' 바로가기</span>';
+      btnWrap.appendChild(a);
+    });
+    // 타임스탬프 아래에 삽입
+    const flexDiv=rowEl.querySelector('div[style*="flex:1"]')||rowEl;
+    flexDiv.appendChild(btnWrap);
+  });
   const assigneeRow=document.getElementById('detail-assignee-row');
   if(ev.assignee){document.getElementById('detail-assignee').textContent=ev.assignee;assigneeRow.style.display='flex';}
   else assigneeRow.style.display='none';
@@ -1001,7 +1047,7 @@ async function openMemberModal(){
       <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(37,99,235,.1)">
         <div style="font-size:12px;font-weight:600;color:#3b6193;margin-bottom:8px">새 이름 등록</div>
         <div style="font-size:11px;color:#7ba3c8;background:#EFF6FF;border-radius:6px;padding:8px 10px;margin-bottom:8px;line-height:1.6">
-          💡 <b>조직명(닉네임)</b>으로 등록해주세요.<br>마케터 페이지에서 수정 요청 전달 시 표시되는 이름이에요.
+          💡 <b>조직명</b>으로 등록해주세요.<br>마케터 페이지에서 수정 요청 전달 시 표시되는 이름이에요.
         </div>
         <div style="display:flex;gap:6px">
           <input id="new-member-input" style="flex:1;padding:8px 10px;border-radius:6px;border:1.5px solid rgba(37,99,235,.2);font-size:13px;font-family:inherit;outline:none" placeholder="예: 홍길동">
