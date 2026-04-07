@@ -939,6 +939,13 @@ function render(){
     const slots=weekSlots[w];
     const evs=events.filter(ev=>!ev.is_highlight&&(activeFilters.has(ev.region)||(activeFilters.has('common')&&(ev.region==='game'||ev.region==='fun')))&&wd.some(ds=>ev.start_date<=ds&&ev.end_date>=ds));
     evs.sort((a,b)=>{
+      const isCommon = ev => ev.region==='common'||ev.region==='game'||ev.region==='fun';
+      const isMulti  = ev => ev.start_date !== ev.end_date;
+      // 우선순위: 공통장기(0) > 단독장기(1) > 공통하루(2) > 단독하루(3)
+      const rank = ev => isCommon(ev) ? (isMulti(ev) ? 0 : 2) : (isMulti(ev) ? 1 : 3);
+      const ra=rank(a), rb=rank(b);
+      if(ra!==rb) return ra-rb;
+      // 같은 우선순위면 기간 긴 것 우선, 그 다음 시작일 순
       const al=new Date(a.end_date)-new Date(a.start_date);
       const bl=new Date(b.end_date)-new Date(b.start_date);
       return bl!==al?bl-al:(a.start_date<b.start_date?-1:1);
