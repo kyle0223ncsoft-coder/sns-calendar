@@ -179,14 +179,14 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
 
     <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:14px">
       <button class="detail-tab active" id="tab-info" onclick="switchTab('info')">소재 정보</button>
-      <button class="detail-tab" id="tab-preview" onclick="switchTab('preview')">X 미리보기</button>
+      <button class="detail-tab" id="tab-preview" onclick="switchTab('preview')">미리보기</button>
     </div>
 
     <div id="panel-info">
       <div class="detail-row"><div class="detail-label">기간</div><div class="detail-val" id="detail-date"></div></div>
       <div class="detail-row" id="detail-plat-row"><div class="detail-label">플랫폼</div><div class="detail-val" id="detail-plat"></div></div>
       <div class="detail-row" id="detail-kr-row">
-        <div class="detail-label" style="color:#185FA5;font-weight:600">KR</div>
+        <div class="detail-label" style="color:#185FA5;font-weight:600">KR<div id="sns-link-kr" style="margin-top:4px"></div></div>
         <div style="flex:1">
           <div class="detail-val" id="detail-kr" style="white-space:pre-wrap;font-size:12px;line-height:1.6"></div>
           <div id="detail-kr-ts" style="font-size:10px;color:#9e9d99;margin-top:3px;text-align:right"></div>
@@ -194,7 +194,7 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
       </div>
       <div style="border-top:1.5px solid var(--border);margin:6px 0"></div>
       <div class="detail-row" id="detail-jp-row">
-        <div class="detail-label" style="color:#0F6E56;font-weight:600">JP</div>
+        <div class="detail-label" style="color:#0F6E56;font-weight:600">JP<div id="sns-link-jp" style="margin-top:4px"></div></div>
         <div style="flex:1">
           <div class="detail-val" id="detail-jp" style="white-space:pre-wrap;font-size:12px;line-height:1.6"></div>
           <div id="detail-jp-ts" style="font-size:10px;color:#9e9d99;margin-top:3px;text-align:right"></div>
@@ -202,7 +202,7 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
       </div>
       <div style="border-top:1.5px solid var(--border);margin:6px 0"></div>
       <div class="detail-row" id="detail-en-row">
-        <div class="detail-label" style="color:#3C3489;font-weight:600">EN</div>
+        <div class="detail-label" style="color:#3C3489;font-weight:600">EN<div id="sns-link-en" style="margin-top:4px"></div></div>
         <div style="flex:1">
           <div class="detail-val" id="detail-en" style="white-space:pre-wrap;font-size:12px;line-height:1.6"></div>
           <div id="detail-en-ts" style="font-size:10px;color:#9e9d99;margin-top:3px;text-align:right"></div>
@@ -210,7 +210,7 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
       </div>
       <div style="border-top:1.5px solid var(--border);margin:6px 0" id="detail-note-div-tw"></div>
       <div class="detail-row" id="detail-tw-row">
-        <div class="detail-label" style="color:#7B3F00;font-weight:600">TW</div>
+        <div class="detail-label" style="color:#7B3F00;font-weight:600">TW<div id="sns-link-tw" style="margin-top:4px"></div></div>
         <div style="flex:1">
           <div class="detail-val" id="detail-tw" style="white-space:pre-wrap;font-size:12px;line-height:1.6"></div>
         </div>
@@ -607,7 +607,10 @@ function render(){
             bar.style.cssText=`left:${seg.start*cellW+4}px;top:${rowTop+TOP_PAD+slot*(BAR_H+BAR_GAP)}px;width:${segSpan*cellW-8}px;border-radius:${roundL} ${roundR} ${roundR} ${roundL};opacity:${seg.isOther?'0.3':'1'};`;
             if(isFirstSeg){
               const rvStatus=ev.review_status||(ev.review_requested?'requested':null);
-              const rvBadge=rvStatus==='approved'
+              const liveBadge=ev.is_live
+                ? `<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#2563EB;color:#fff;flex-shrink:0;margin-right:2px">라이브</span>`
+                : '';
+              const rvBadge=rvStatus==='approved' && !ev.is_live
                 ? `<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#16a34a;color:#fff;flex-shrink:0;margin-right:2px">승인</span>`
                 : rvStatus==='revision'
                 ? `<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#dc2626;color:#fff;flex-shrink:0;margin-right:2px">수정요청</span>`
@@ -618,7 +621,7 @@ function render(){
               const badge=regionBadge[ev.region];
               const badgeHtml=badge?`<span style="font-size:10px;font-weight:700;background:rgba(255,255,255,0.35);border-radius:3px;padding:0 4px;margin-right:2px;flex-shrink:0">${badge}</span>`:'';
               const icons=(ev.platform||'').split(',').map(p=>p.trim()).filter(p=>PLATFORM_ICONS[p]).map(p=>PLATFORM_ICONS[p]).join('');
-              bar.innerHTML=`${rvBadge}${badgeHtml}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${icons?icons+' ':''}${ev.name}</span>`;
+              bar.innerHTML=`${liveBadge}${rvBadge}${badgeHtml}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${icons?icons+' ':''}${ev.name}</span>`;
             } else {bar.innerHTML='&nbsp;';}
             bar.onclick=e=>{e.stopPropagation();openDetail(ev.id);};
             cal.appendChild(bar);
@@ -637,11 +640,8 @@ function openDetail(id){
   document.getElementById('detail-badge').textContent=REGION_LABELS[ev.region]||ev.region;
   document.getElementById('detail-badge').style.cssText=`font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;border:1.5px solid ${b.border};background:${b.bg};color:${b.color}`;
   document.getElementById('detail-name').textContent=ev.name;
-  const liveBadge=document.getElementById('detail-live-badge');
-  if(liveBadge) liveBadge.style.display=ev.is_live?'inline-flex':'none';
-  // 라이브 상태 뱃지
-  const liveIndicator=document.getElementById('detail-live-badge');
-  if(liveIndicator) liveIndicator.style.display=ev.is_live?'inline-flex':'none';
+  const liveBadgeEl=document.getElementById('detail-live-badge');
+  if(liveBadgeEl) liveBadgeEl.style.display=ev.is_live?'inline-flex':'none';
   document.getElementById('detail-date').textContent=ev.start_date===ev.end_date?ev.start_date:`${ev.start_date} ~ ${ev.end_date}`;
   const plats=(ev.platform||'').split(',').map(p=>p.trim()).filter(Boolean);
   const platRow=document.getElementById('detail-plat-row');
@@ -748,6 +748,9 @@ function openDetail(id){
   document.querySelectorAll('.x-region-btn').forEach(b=>b.classList.toggle('active',b.dataset.region==='kr'));
   renderPreview(ev,'kr');
   switchTab('info');
+
+  // SNS 바로가기
+  {const _p=(ev.platform||'').split(',').map(p=>p.trim()).filter(Boolean);['kr','jp','en','tw'].forEach(r=>renderSnsLinks('sns-link-'+r,ev.region,_p));}
   document.getElementById('detail-modal').classList.add('open');
 }
 
@@ -861,6 +864,8 @@ function renderXCard(region,ev){
   const hashtagLine=lines.filter(l=>l.trim().startsWith('#')).join(' ');
   const bodyText=lines.filter(l=>!l.trim().startsWith('#')).join('\n').trim();
   const hashtags=hashtagLine.match(/#\S+/g)||[];
+  document.getElementById('x-avatar').src=AVATAR_SRC||'';
+  document.getElementById('x-avatar').src=AVATAR_SRC||'';
   document.getElementById('x-name').textContent=nameMap[region];
   document.getElementById('x-handle').textContent=handleMap[region];
   document.getElementById('x-body').textContent=bodyText||'(투고문 없음)';
@@ -996,6 +1001,33 @@ function showConfirm(msg,sub,okLabel,okColor,callback){
 }
 function confirmOk(){document.getElementById('confirm-dialog').style.display='none';if(_confirmCallback){_confirmCallback();_confirmCallback=null;}}
 function confirmCancel(){document.getElementById('confirm-dialog').style.display='none';_confirmCallback=null;}
+
+// ── SNS 바로가기 버튼 생성 ──
+const SNS_URL_MAP = {
+  'X':       { kr:'https://x.com/BREAKERS_korea', jp:'https://x.com/BREAKERS_japan', en:'https://x.com/Breakers_EN', tw:null, common:'https://x.com/BREAKERS_korea' },
+  'Instagram':{ en:'https://www.instagram.com/breakers_en/' },
+  'Youtube': { kr:'https://www.youtube.com/@BREAKERS_KRofficial', jp:'https://www.youtube.com/@BREAKERS_official', en:'https://www.youtube.com/@BREAKERS_EN' },
+  'Facebook':{ tw:'https://www.facebook.com/LimitZeroBreakersOfficial.TW/', common:'https://www.facebook.com/LimitZeroBreakersOfficial.TW/' },
+  'Discord': { kr:'https://discord.com/invite/KSWRAbCzse', jp:'https://discord.com/invite/KSWRAbCzse', en:'https://discord.com/invite/KSWRAbCzse', tw:'https://discord.com/invite/KSWRAbCzse', common:'https://discord.com/invite/KSWRAbCzse' },
+};
+function renderSnsLinks(containerId, region, platforms) {
+  const wrap = document.getElementById(containerId);
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  const evRegion = (region === 'game' || region === 'fun') ? 'common' : region;
+  platforms.forEach(plat => {
+    const platUrls = SNS_URL_MAP[plat]; if (!platUrls) return;
+    const url = platUrls[evRegion] || platUrls['common'] || null;
+    if (!url) return;
+    const a = document.createElement('a');
+    a.href = url; a.target = '_blank'; a.rel = 'noopener';
+    a.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);font-size:11px;font-weight:600;text-decoration:none;cursor:pointer;margin-right:4px;margin-top:4px;transition:background .12s';
+    a.onmouseover = () => a.style.background = 'rgba(0,0,0,.06)';
+    a.onmouseout  = () => a.style.background = 'var(--surface)';
+    a.innerHTML   = (PLATFORM_ICONS[plat] || '') + '<span>바로가기</span>';
+    wrap.appendChild(a);
+  });
+}
 function requestNotificationPermission(){
   if(!('Notification' in window)) return;
   if(Notification.permission==='default') Notification.requestPermission();
