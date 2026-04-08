@@ -1986,7 +1986,7 @@ function openDetail(id){
   switchDetailTab('info');
 
   // SNS 바로가기
-  {const _p=(ev.platform||'').split(',').map(p=>p.trim()).filter(Boolean);['kr','jp','en','tw'].forEach(r=>renderSnsLinks('sns-link-'+r,ev.region,_p));}
+  {const _p=(ev.platform||'').split(',').map(p=>p.trim()).filter(Boolean);['kr','jp','en','tw'].forEach(r=>renderSnsLinks('sns-link-'+r,ev.region,_p,ev.is_live));}
   document.getElementById('detail-modal').classList.add('open');
 }
 function renderReviewStatus(ev){
@@ -2188,31 +2188,38 @@ function showToast(msg, type='default'){
 // 브라우저 알림
 
 // ── SNS 바로가기 버튼 생성 ──
+
 const SNS_URL_MAP = {
-  'X':       { kr:'https://x.com/BREAKERS_korea', jp:'https://x.com/BREAKERS_japan', en:'https://x.com/Breakers_EN', tw:null, common:'https://x.com/BREAKERS_korea' },
+  'X':        { kr:'https://x.com/BREAKERS_korea', jp:'https://x.com/BREAKERS_japan', en:'https://x.com/Breakers_EN' },
   'Instagram':{ en:'https://www.instagram.com/breakers_en/' },
-  'Youtube': { kr:'https://www.youtube.com/@BREAKERS_KRofficial', jp:'https://www.youtube.com/@BREAKERS_official', en:'https://www.youtube.com/@BREAKERS_EN' },
-  'Facebook':{ tw:'https://www.facebook.com/LimitZeroBreakersOfficial.TW/', common:'https://www.facebook.com/LimitZeroBreakersOfficial.TW/' },
-  'Discord': { kr:'https://discord.com/invite/KSWRAbCzse', jp:'https://discord.com/invite/KSWRAbCzse', en:'https://discord.com/invite/KSWRAbCzse', tw:'https://discord.com/invite/KSWRAbCzse', common:'https://discord.com/invite/KSWRAbCzse' },
+  'Youtube':  { kr:'https://www.youtube.com/@BREAKERS_KRofficial', jp:'https://www.youtube.com/@BREAKERS_official', en:'https://www.youtube.com/@BREAKERS_EN' },
+  'Facebook': { tw:'https://www.facebook.com/LimitZeroBreakersOfficial.TW/' },
+  'Discord':  { kr:'https://discord.com/invite/KSWRAbCzse', jp:'https://discord.com/invite/KSWRAbCzse', en:'https://discord.com/invite/KSWRAbCzse', tw:'https://discord.com/invite/KSWRAbCzse', common:'https://discord.com/invite/KSWRAbCzse' },
 };
-function renderSnsLinks(containerId, region, platforms) {
+// 외부 링크 아이콘 SVG
+const SEND_ICON = `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>`;
+function renderSnsLinks(containerId, region, platforms, isLive) {
   const wrap = document.getElementById(containerId);
   if (!wrap) return;
   wrap.innerHTML = '';
+  if (!isLive) return;
   const evRegion = (region === 'game' || region === 'fun') ? 'common' : region;
+  // 플랫폼별로 버튼 하나씩
   platforms.forEach(plat => {
     const platUrls = SNS_URL_MAP[plat]; if (!platUrls) return;
-    const url = platUrls[evRegion] || platUrls['common'] || null;
+    const url = platUrls[evRegion] ?? platUrls['common'] ?? null;
     if (!url) return;
     const a = document.createElement('a');
     a.href = url; a.target = '_blank'; a.rel = 'noopener';
-    a.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);font-size:11px;font-weight:600;text-decoration:none;cursor:pointer;margin-right:4px;margin-top:4px;transition:background .12s';
-    a.onmouseover = () => a.style.background = 'rgba(0,0,0,.06)';
+    a.title = plat + ' 바로가기';
+    a.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);text-decoration:none;cursor:pointer;margin-top:4px;margin-right:3px;transition:background .12s;flex-shrink:0';
+    a.onmouseover = () => a.style.background = 'rgba(0,0,0,.08)';
     a.onmouseout  = () => a.style.background = 'var(--surface)';
-    a.innerHTML   = (PLATFORM_ICONS[plat] || '') + '<span>바로가기</span>';
+    a.innerHTML = SEND_ICON;
     wrap.appendChild(a);
   });
 }
+
 function requestNotificationPermission(){
   if(!('Notification' in window)) return;
   if(Notification.permission==='default') Notification.requestPermission();
