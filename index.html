@@ -484,7 +484,7 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
         <div class="detail-val"><div class="detail-plat-icons" id="detail-plat"></div></div>
       </div>
       <div class="detail-row" id="detail-note-kr-row">
-        <div class="detail-label" style="color:#185FA5;font-weight:600">KR</div>
+        <div class="detail-label" style="color:#185FA5;font-weight:600">KR<div id="sns-link-kr" style="margin-top:4px"></div></div>
         <div style="flex:1">
           <div class="detail-val" id="detail-note-kr" style="white-space:pre-wrap;line-height:1.6;font-size:12px"></div>
           <div id="detail-note-kr-ts" style="font-size:10px;color:var(--text-3);margin-top:3px;text-align:right"></div>
@@ -492,7 +492,7 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
       </div>
       <div style="border-top:1.5px solid var(--border);margin:6px 0" id="detail-note-div-jp"></div>
       <div class="detail-row" id="detail-note-jp-row">
-        <div class="detail-label" style="color:#0F6E56;font-weight:600">JP</div>
+        <div class="detail-label" style="color:#0F6E56;font-weight:600">JP<div id="sns-link-jp" style="margin-top:4px"></div></div>
         <div style="flex:1">
           <div class="detail-val" id="detail-note-jp" style="white-space:pre-wrap;line-height:1.6;font-size:12px"></div>
           <div id="detail-note-jp-ts" style="font-size:10px;color:var(--text-3);margin-top:3px;text-align:right"></div>
@@ -500,7 +500,7 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
       </div>
       <div style="border-top:1.5px solid var(--border);margin:6px 0" id="detail-note-div-en"></div>
       <div class="detail-row" id="detail-note-en-row">
-        <div class="detail-label" style="color:#3C3489;font-weight:600">EN</div>
+        <div class="detail-label" style="color:#3C3489;font-weight:600">EN<div id="sns-link-en" style="margin-top:4px"></div></div>
         <div style="flex:1">
           <div class="detail-val" id="detail-note-en" style="white-space:pre-wrap;line-height:1.6;font-size:12px"></div>
           <div id="detail-note-en-ts" style="font-size:10px;color:var(--text-3);margin-top:3px;text-align:right"></div>
@@ -508,7 +508,7 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
       </div>
       <div style="border-top:1.5px solid var(--border);margin:6px 0" id="detail-note-div-tw"></div>
       <div class="detail-row" id="detail-note-tw-row">
-        <div class="detail-label" style="color:#7B3F00;font-weight:600">TW</div>
+        <div class="detail-label" style="color:#7B3F00;font-weight:600">TW<div id="sns-link-tw" style="margin-top:4px"></div></div>
         <div style="flex:1">
           <div class="detail-val" id="detail-note-tw" style="white-space:pre-wrap;line-height:1.6;font-size:12px"></div>
           <div id="detail-note-tw-ts" style="font-size:10px;color:var(--text-3);margin-top:3px;text-align:right"></div>
@@ -1984,6 +1984,9 @@ function openDetail(id){
 
   // 탭 초기화
   switchDetailTab('info');
+
+  // SNS 바로가기
+  {const _p=(ev.platform||'').split(',').map(p=>p.trim()).filter(Boolean);['kr','jp','en','tw'].forEach(r=>renderSnsLinks('sns-link-'+r,ev.region,_p));}
   document.getElementById('detail-modal').classList.add('open');
 }
 function renderReviewStatus(ev){
@@ -2183,6 +2186,33 @@ function showToast(msg, type='default'){
 }
 
 // 브라우저 알림
+
+// ── SNS 바로가기 버튼 생성 ──
+const SNS_URL_MAP = {
+  'X':       { kr:'https://x.com/BREAKERS_korea', jp:'https://x.com/BREAKERS_japan', en:'https://x.com/Breakers_EN', tw:null, common:'https://x.com/BREAKERS_korea' },
+  'Instagram':{ en:'https://www.instagram.com/breakers_en/' },
+  'Youtube': { kr:'https://www.youtube.com/@BREAKERS_KRofficial', jp:'https://www.youtube.com/@BREAKERS_official', en:'https://www.youtube.com/@BREAKERS_EN' },
+  'Facebook':{ tw:'https://www.facebook.com/LimitZeroBreakersOfficial.TW/', common:'https://www.facebook.com/LimitZeroBreakersOfficial.TW/' },
+  'Discord': { kr:'https://discord.com/invite/KSWRAbCzse', jp:'https://discord.com/invite/KSWRAbCzse', en:'https://discord.com/invite/KSWRAbCzse', tw:'https://discord.com/invite/KSWRAbCzse', common:'https://discord.com/invite/KSWRAbCzse' },
+};
+function renderSnsLinks(containerId, region, platforms) {
+  const wrap = document.getElementById(containerId);
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  const evRegion = (region === 'game' || region === 'fun') ? 'common' : region;
+  platforms.forEach(plat => {
+    const platUrls = SNS_URL_MAP[plat]; if (!platUrls) return;
+    const url = platUrls[evRegion] || platUrls['common'] || null;
+    if (!url) return;
+    const a = document.createElement('a');
+    a.href = url; a.target = '_blank'; a.rel = 'noopener';
+    a.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);font-size:11px;font-weight:600;text-decoration:none;cursor:pointer;margin-right:4px;margin-top:4px;transition:background .12s';
+    a.onmouseover = () => a.style.background = 'rgba(0,0,0,.06)';
+    a.onmouseout  = () => a.style.background = 'var(--surface)';
+    a.innerHTML   = (PLATFORM_ICONS[plat] || '') + '<span>바로가기</span>';
+    wrap.appendChild(a);
+  });
+}
 function requestNotificationPermission(){
   if(!('Notification' in window)) return;
   if(Notification.permission==='default') Notification.requestPermission();
