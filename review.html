@@ -721,7 +721,7 @@ function openDetail(id){
         <span style="font-weight:600">🔔 마케터가 검수를 요청했어요</span>
         ${ev.review_type?`<span style="background:#F59E0B;color:#fff;font-size:10px;font-weight:600;padding:1px 7px;border-radius:20px">${ev.review_type==='소재'?'🎨 소재':'✍️ 투고문'}</span>`:''}
       </div>
-      ${ev.review_request_comment?`<div style="color:#78350F">${ev.review_request_comment}</div>`:''}
+      ${ev.review_request_comment?`<div style="color:#78350F;word-break:break-all">${renderMarkdown(ev.review_request_comment)}</div>`:''}
     </div>`:'';
     selectedStatus=null;
     document.getElementById('btn-approve').classList.remove('sel');
@@ -1012,7 +1012,8 @@ function renderMarkdown(text){
     .replace(/\*(.+?)\*/g,'<i>$1</i>')
     .replace(/~~(.+?)~~/g,'<s>$1</s>')
     .replace(/`([^`]+)`/g,'<code>$1</code>')
-    .replace(/(https?:\/\/[^\s<"]+)/g,'<a href="$1" target="_blank" rel="noopener" style="color:#2563EB;text-decoration:underline;word-break:break-all">$1</a>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noopener" style="color:#2563EB;text-decoration:underline;word-break:break-all">$1</a>')
+    .replace(/(https?:\/\/[^\s<&"]+)/g,'<a href="$1" target="_blank" rel="noopener" style="color:#2563EB;text-decoration:underline;word-break:break-all">$1</a>')
     .replace(/\n/g,'<br>');
 }
 // ── 슬랙 스타일 리치 에디터 ──
