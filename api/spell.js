@@ -9,34 +9,35 @@ export default async function handler(req, res) {
   if (!text || !text.trim()) return res.status(400).json({ error: 'No text provided' });
 
   try {
-    const response = await fetch('https://speller.cs.pusan.ac.kr/results', {
+    const response = await fetch('https://speller.town', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Referer': 'https://speller.cs.pusan.ac.kr/',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'application/json, text/javascript, */*',
-      },
-      body: new URLSearchParams({ text1: text }).toString(),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
     });
 
     if (!response.ok) {
       return res.status(502).json({ error: '맞춤법 서버 오류: ' + response.status });
     }
 
-    // 부산대 API 응답: JSON 배열
-    // [{ "str": "교정된 문장", "errInfo": [...] }, ...]
+    // speller.town 응답 형식:
+    // { suggestions: [{ start, end, text, candidates, description }] }
     const data = await response.json();
+    const suggestions = data.suggestions || [];
 
-    if (!Array.isArray(data) || data.length === 0) {
+    if (suggestions.length === 0) {
       return res.status(200).json({ corrected: text, changed: false });
     }
 
-    // 각 문단의 교정된 텍스트 합치기
-    const corrected = data.map(item => item.str || '').join('\n');
-    const changed = corrected !== text;
+    // start/end 기반으로 뒤에서부터 교체 (앞에서 교체하면 인덱스가 밀림)
+    let corrected = text;
+    const sorted = [...suggestions].sort((a, b) => b.start - a.start);
+    for (const s of sorted) {
+      if (s.candidates && s.candidates.length > 0) {
+        corrected = corrected.slice(0, s.start) + s.candidates[0] + corrected.slice(s.end);
+      }
+    }
 
-    res.status(200).json({ corrected, changed });
+    res.status(200).json({ corrected, changed: corrected !== text });
 
   } catch (e) {
     res.status(500).json({ error: e.message });
