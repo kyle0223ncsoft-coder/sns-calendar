@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/review", "destination": "/review.html" },
+    { "source": "/api/:path*", "destination": "/api/:path*" }
+  ]
+}
