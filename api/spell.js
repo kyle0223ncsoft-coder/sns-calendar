@@ -1,4 +1,4 @@
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -19,8 +19,6 @@ export default async function handler(req, res) {
       return res.status(502).json({ error: '맞춤법 서버 오류: ' + response.status });
     }
 
-    // speller.town 응답 형식:
-    // { suggestions: [{ start, end, text, candidates, description }] }
     const data = await response.json();
     const suggestions = data.suggestions || [];
 
@@ -28,7 +26,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ corrected: text, changed: false });
     }
 
-    // start/end 기반으로 뒤에서부터 교체 (앞에서 교체하면 인덱스가 밀림)
+    // start/end 기반으로 뒤에서부터 교체
     let corrected = text;
     const sorted = [...suggestions].sort((a, b) => b.start - a.start);
     for (const s of sorted) {
