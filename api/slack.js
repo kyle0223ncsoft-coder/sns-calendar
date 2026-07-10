@@ -8,12 +8,15 @@ module.exports = async function handler(req, res) {
   const webhookUrl = process.env.SLACK_WEBHOOK_URL;
   if (!webhookUrl) return res.status(500).json({ error: 'Webhook URL not configured' });
 
-  const { type, evName, region, platform, assignee, reviewer, date } = req.body;
+  const { type, evName, region, platform, assignee, reviewer, date, evId } = req.body;
 
   const REGION_LABEL = {
     common:'전 권역 공통', game:'전 권역 공통', fun:'전 권역 공통',
     kr:'KR 단독', jp:'JP 단독', en:'EN 단독', tw:'TW 단독'
   };
+
+  const link = evId ? `https://lzb-ops.vercel.app/?ev=${evId}` : null;
+  const linkLine = link ? `\n*링크:* <${link}|바로가기>` : '';
 
   let text = '';
   let color = '';
@@ -22,19 +25,19 @@ module.exports = async function handler(req, res) {
   if (type === 'review_request') {
     emoji = '📋';
     color = '#F59E0B';
-    text = `*검수 요청*\n*소재:* ${evName}\n*권역:* ${REGION_LABEL[region]||region}\n*플랫폼:* ${platform}\n*담당자:* ${assignee||'-'}\n*날짜:* ${date}`;
+    text = `*검수 요청*\n*소재:* ${evName}\n*권역:* ${REGION_LABEL[region]||region}\n*플랫폼:* ${platform}\n*담당자:* ${assignee||'-'}\n*날짜:* ${date}${linkLine}`;
   } else if (type === 'approved') {
     emoji = '✅';
     color = '#10B981';
-    text = `*검수 승인*\n*소재:* ${evName}\n*권역:* ${REGION_LABEL[region]||region}\n*플랫폼:* ${platform}\n*검수자:* ${reviewer||'-'}\n*날짜:* ${date}`;
+    text = `*검수 승인*\n*소재:* ${evName}\n*권역:* ${REGION_LABEL[region]||region}\n*플랫폼:* ${platform}\n*검수자:* ${reviewer||'-'}\n*날짜:* ${date}${linkLine}`;
   } else if (type === 'rejected') {
     emoji = '❌';
     color = '#EF4444';
-    text = `*검수 반려*\n*소재:* ${evName}\n*권역:* ${REGION_LABEL[region]||region}\n*플랫폼:* ${platform}\n*검수자:* ${reviewer||'-'}\n*날짜:* ${date}`;
+    text = `*검수 반려*\n*소재:* ${evName}\n*권역:* ${REGION_LABEL[region]||region}\n*플랫폼:* ${platform}\n*검수자:* ${reviewer||'-'}\n*날짜:* ${date}${linkLine}`;
   } else if (type === 'live') {
     emoji = '🚀';
     color = '#6366F1';
-    text = `*라이브 완료*\n*소재:* ${evName}\n*권역:* ${REGION_LABEL[region]||region}\n*플랫폼:* ${platform}\n*날짜:* ${date}`;
+    text = `*라이브 완료*\n*소재:* ${evName}\n*권역:* ${REGION_LABEL[region]||region}\n*플랫폼:* ${platform}\n*날짜:* ${date}${linkLine}`;
   } else {
     return res.status(400).json({ error: 'Unknown type' });
   }
