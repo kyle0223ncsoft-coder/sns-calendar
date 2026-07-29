@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BMW — 운영 현황</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#F8F7F4;--surface:#fff;--border:rgba(0,0,0,0.08);
+    --text:#1a1a18;--text-2:#6b6b67;--text-3:#9e9d99;
+    --r:12px;--rs:8px;
+    --kr:#185FA5;--jp:#0F6E56;--en:#3C3489;--tw:#7B3F00;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+  .hdr{background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:20}
+  .hdr-left{display:flex;align-items:center;gap:12px}
+  .hdr-title{font-size:15px;font-weight:700;letter-spacing:-.3px}
+  .hdr-sub{font-size:12px;color:var(--text-3);padding-left:12px;border-left:1px solid var(--border)}
+  .hdr-right{display:flex;align-items:center;gap:8px}
+  .sync-dot{width:7px;height:7px;border-radius:50%;background:#22c55e;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .sync-label{font-size:11px;color:var(--text-3)}
+
+  .container{max-width:1280px;margin:0 auto;padding:24px 28px;display:flex;flex-direction:column;gap:20px}
+
+  /* KPI */
+  .kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+  .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;position:relative;overflow:hidden}
+  .kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent,#1a1a18)}
+  .kpi-label{font-size:10px;font-weight:600;color:var(--text-3);letter-spacing:.3px;text-transform:uppercase;margin-bottom:8px}
+  .kpi-value{font-size:28px;font-weight:700;letter-spacing:-1px;line-height:1;margin-bottom:4px}
+  .kpi-desc{font-size:11px;color:var(--text-3);line-height:1.4}
+
+  /* 섹션 */
+  .row-2{display:grid;grid-template-columns:1.4fr 1fr;gap:16px}
+  .row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+  .card-hdr{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+  .card-title{font-size:13px;font-weight:700}
+  .card-hint{font-size:11px;color:var(--text-3)}
+  .card-body{padding:16px 18px}
+  .card-empty{padding:28px;text-align:center;color:var(--text-3);font-size:13px}
+
+  /* 오늘 리스트 */
+  .today-item{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
+  .today-item:last-child{border-bottom:none}
+  .today-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+  .today-time{font-size:12px;font-weight:700;color:var(--text-2);min-width:44px}
+  .today-info{flex:1;min-width:0}
+  .today-name{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:2px}
+  .today-meta{font-size:11px;color:var(--text-3);display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+  .badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;white-space:nowrap}
+  .badge-green{background:#dcfce7;color:#16a34a}
+  .badge-red{background:#fee2e2;color:#dc2626}
+  .badge-yellow{background:#fef9c3;color:#854d0e}
+  .badge-gray{background:#f3f4f6;color:#6b7280}
+  .badge-blue{background:#dbeafe;color:#1d4ed8}
+
+  /* 바 차트 */
+  .bar-wrap{display:flex;flex-direction:column;gap:10px}
+  .bar-item{display:flex;align-items:center;gap:10px}
+  .bar-label{font-size:12px;font-weight:700;min-width:28px}
+  .bar-track{flex:1;height:8px;background:var(--bg);border-radius:4px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:4px;transition:width .8s ease}
+  .bar-count{font-size:12px;font-weight:600;color:var(--text-2);min-width:24px;text-align:right}
+  .bar-extra{font-size:11px;color:var(--text-3);min-width:50px;text-align:right}
+
+  /* 플랫폼 */
+  .plat-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)}
+  .plat-item:last-child{border-bottom:none}
+  .plat-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+  .plat-name{font-size:12px;color:var(--text-2);flex:1}
+  .plat-bar-wrap{width:80px;height:6px;background:var(--bg);border-radius:3px;overflow:hidden}
+  .plat-bar-fill{height:100%;border-radius:3px}
+  .plat-count{font-size:12px;font-weight:600;min-width:28px;text-align:right}
+  .plat-pct{font-size:11px;color:var(--text-3);min-width:32px;text-align:right}
+
+  /* 활동 피드 */
+  .feed-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+  .feed-item:last-child{border-bottom:none}
+  .feed-icon{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;background:var(--bg)}
+  .feed-body{flex:1;min-width:0}
+  .feed-text{font-size:12px;color:var(--text);line-height:1.5;margin-bottom:2px}
+  .feed-meta{display:flex;align-items:center;gap:6px}
+  .feed-time{font-size:11px;color:var(--text-3)}
+  .feed-link{font-size:11px;color:#2563EB;text-decoration:none;padding:1px 6px;border:1px solid #bfdbfe;border-radius:4px;white-space:nowrap}
+  .feed-link:hover{background:#eff6ff}
+
+  /* 승인률 게이지 */
+  .gauge-wrap{display:flex;flex-direction:column;gap:8px}
+  .gauge-item{display:flex;align-items:center;gap:8px}
+  .gauge-label{font-size:11px;font-weight:600;min-width:28px;color:var(--text-2)}
+  .gauge-track{flex:1;height:6px;background:var(--bg);border-radius:3px;overflow:hidden;display:flex;gap:1px}
+  .gauge-approved{height:100%;background:#16a34a;border-radius:3px;transition:width .8s}
+  .gauge-revision{height:100%;background:#dc2626;border-radius:3px;transition:width .8s}
+  .gauge-pct{font-size:11px;font-weight:700;min-width:34px;text-align:right}
+
+  .spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--text);border-radius:50%;animation:spin .7s linear infinite;margin:24px auto;display:block}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  @media(max-width:900px){
+    .kpi-grid{grid-template-columns:repeat(3,1fr)}
+    .row-2,.row-3{grid-template-columns:1fr}
+  }
+  /* ── 인쇄 레이아웃 ── */
+  @media print{
+    @page{size:A4 portrait;margin:18mm 16mm}
+    body{background:#fff;font-size:11px}
+    .hdr{position:static;border-bottom:2px solid #1a1a18;padding:10px 0;margin-bottom:12px}
+    .hdr-title{font-size:16px}
+    .hdr-sub{font-size:11px}
+    .sync-dot,.sync-label,#last-updated,.no-print{display:none!important}
+    .print-only{display:block!important}
+    .container{padding:0;gap:12px;max-width:100%}
+    .kpi-grid{grid-template-columns:repeat(6,1fr);gap:8px}
+    .kpi-card{padding:10px 12px;border:1px solid #e5e7eb;break-inside:avoid}
+    .kpi-card::before{height:2px}
+    .kpi-value{font-size:20px}
+    .row-2,.row-3{grid-template-columns:1fr 1fr;gap:10px}
+    .card{border:1px solid #e5e7eb;break-inside:avoid}
+    .card-hdr{padding:9px 12px}
+    .card-body{padding:10px 12px}
+    .feed-item{padding:6px 0}
+    .feed-link{display:none}
+    .today-item{padding:5px 0}
+    a{color:#1a1a18!important;text-decoration:none}
+    .hdr-print-date{display:block;font-size:10px;color:#6b7280;margin-top:2px}
+    .activity-feed-section{break-before:page}
+  }
+  .print-only{display:none}
+  .hdr-print-date{display:none}
+
+  @media(max-width:600px){
+    .kpi-grid{grid-template-columns:repeat(2,1fr)}
+    .container{padding:14px}
+  }
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-left">
+    <div class="hdr-title">BMW</div>
+    <div class="hdr-sub">글로벌 SNS 운영 현황</div>
+  </div>
+  <div class="hdr-right">
+    <div class="sync-dot"></div>
+    <span class="sync-label" id="sync-label">연결 중...</span>
+    <span id="last-updated" style="font-size:11px;color:var(--text-3);margin-left:4px"></span>
+    <button onclick="exportPDF()" class="no-print" style="margin-left:12px;padding:6px 14px;border-radius:7px;border:1.5px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;cursor:pointer;color:var(--text-2);font-family:inherit;transition:all .15s" onmouseenter="this.style.background='#1a1a18';this.style.color='#fff'" onmouseleave="this.style.background='var(--surface)';this.style.color='var(--text-2)'">📄 PDF 내보내기</button>
+  </div>
+  <div class="print-only hdr-print-date" id="print-date"></div>
+</header>
+
+<div class="container">
+
+  <!-- KPI 6개 -->
+  <div class="kpi-grid">
+    <div class="kpi-card" style="--accent:#1a1a18">
+      <div class="kpi-label">이번 달 소재</div>
+      <div class="kpi-value" id="k-total">—</div>
+      <div class="kpi-desc" id="k-total-d">로딩 중</div>
+    </div>
+    <div class="kpi-card" style="--accent:#F59E0B">
+      <div class="kpi-label">검수 대기</div>
+      <div class="kpi-value" id="k-pending">—</div>
+      <div class="kpi-desc" id="k-pending-d">검수 요청 중</div>
+    </div>
+    <div class="kpi-card" style="--accent:#2563EB">
+      <div class="kpi-label">오늘 업로드</div>
+      <div class="kpi-value" id="k-today">—</div>
+      <div class="kpi-desc" id="k-today-d">로딩 중</div>
+    </div>
+    <div class="kpi-card" style="--accent:#16a34a">
+      <div class="kpi-label">이번 달 승인률</div>
+      <div class="kpi-value" id="k-approval">—</div>
+      <div class="kpi-desc" id="k-approval-d">검수 완료 기준</div>
+    </div>
+    <div class="kpi-card" style="--accent:#8b5cf6">
+      <div class="kpi-label">평균 검수 소요</div>
+      <div class="kpi-value" id="k-avg-days">—</div>
+      <div class="kpi-desc" id="k-avg-days-d">요청~완료 기준</div>
+    </div>
+    <div class="kpi-card" style="--accent:#0ea5e9">
+      <div class="kpi-label">라이브 완료율</div>
+      <div class="kpi-value" id="k-live-rate">—</div>
+      <div class="kpi-desc" id="k-live-rate-d">승인 소재 기준</div>
+    </div>
+  </div>
+
+  <!-- 오늘 + 권역별 -->
+  <div class="row-2">
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-title">오늘 업로드 예정</div>
+        <div class="card-hint" id="today-date"></div>
+      </div>
+      <div class="card-body" id="today-list"><span class="spinner"></span></div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-title">이번 달 권역별 소재</div>
+        </div>
+        <div class="card-body" id="region-bars"><span class="spinner"></span></div>
+      </div>
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-title">권역별 승인률</div>
+          <div class="card-hint">이번 달</div>
+        </div>
+        <div class="card-body" id="region-approval"><span class="spinner"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 플랫폼 + 상태 분포 -->
+  <div class="row-2" style="grid-template-columns:1fr 1fr">
+    <div class="card">
+      <div class="card-hdr"><div class="card-title">플랫폼별 분포</div><div class="card-hint">이번 달</div></div>
+      <div class="card-body" id="platform-list"><span class="spinner"></span></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr"><div class="card-title">검수 상태 분포</div><div class="card-hint">전체 소재</div></div>
+      <div class="card-body" id="status-dist"><span class="spinner"></span></div>
+    </div>
+
+  </div>
+
+  <!-- 최근 활동 -->
+  <div class="card activity-feed-section">
+    <div class="card-hdr">
+      <div class="card-title">최근 활동</div>
+      <div class="card-hint">소재 등록 · 검수 요청 · 승인 · 반려 · 라이브 기준 / "테스트" 소재 제외</div>
+    </div>
+    <div class="card-body" id="activity-feed"><span class="spinner"></span></div>
+  </div>
+
+</div>
+
+<script>
+const SUPABASE_URL = 'https://ahetdkarbdrmsuahawag.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_qXPGvnM2PyP_-Dv1LKImvw_unm4vuKU';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const BASE_URL = 'https://lzb-ops.vercel.app';
+
+const REGION_COLORS = {kr:'#185FA5',jp:'#0F6E56',en:'#3C3489',tw:'#7B3F00'};
+const PLATFORM_COLORS = {X:'#000',Facebook:'#1877f2',Instagram:'#e1306c',Youtube:'#ff0000',YoutubeCommunity:'#ff4444',Discord:'#5865f2'};
+const COMMON = ['common','game','fun'];
+
+let events = [], lastUpdated = null;
+
+function pad(n){return String(n).padStart(2,'0');}
+function toDs(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;}
+function todayDs(){return toDs(new Date());}
+function monthStart(){const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-01`;}
+function monthEnd(){const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-31`;}
+function timeAgo(iso){
+  if(!iso) return '';
+  const s=Math.floor((Date.now()-new Date(iso).getTime())/1000);
+  if(s<60) return '방금 전';
+  if(s<3600) return Math.floor(s/60)+'분 전';
+  if(s<86400) return Math.floor(s/3600)+'시간 전';
+  return Math.floor(s/86400)+'일 전';
+}
+function fmtTime(t){
+  if(!t) return '—';
+  const [h,m]=t.split(':');
+  const hh=parseInt(h); const a=hh<12?'오전':'오후'; const h12=hh%12||12;
+  return `${a} ${h12}:${m||'00'}`;
+}
+function isTest(ev){return (ev.name||'').includes('테스트');}
+function ticketLink(id){return `${BASE_URL}/?ev=${id}`;}
+function thisMonth(arr){return arr.filter(e=>e.start_date>=monthStart()&&e.start_date<=monthEnd());}
+
+async function loadData(){
+  const {data}=await sb.from('events').select('*');
+  events=data||[];
+  lastUpdated=new Date();
+  render();
+  document.getElementById('sync-label').textContent='실시간 연결됨';
+  document.getElementById('last-updated').textContent=`· ${timeAgo(lastUpdated.toISOString())} 갱신`;
+}
+
+function render(){
+  renderKPI();
+  renderToday();
+  renderRegionBars();
+  renderRegionApproval();
+  renderPlatforms();
+  renderStatusDist();
+  renderFeed();
+}
+
+function renderKPI(){
+  const mn=thisMonth(events);
+  // 총 소재
+  document.getElementById('k-total').textContent=mn.length;
+  document.getElementById('k-total-d').textContent=`전 권역 포함`;
+
+  // 검수 대기
+  const pend=events.filter(e=>e.review_requested&&!e.review_status&&!isTest(e));
+  document.getElementById('k-pending').textContent=pend.length;
+  document.getElementById('k-pending-d').textContent=pend.length?`${pend.length}개 대기 중`:'대기 없음';
+
+  // 오늘
+  const tod=events.filter(e=>e.start_date===todayDs());
+  const liveToday=tod.filter(e=>e.is_live).length;
+  document.getElementById('k-today').textContent=tod.length;
+  document.getElementById('k-today-d').textContent=`라이브 완료 ${liveToday}개`;
+
+  // 승인률
+  const rev=mn.filter(e=>e.review_status==='approved'||e.review_status==='revision');
+  const app=rev.filter(e=>e.review_status==='approved');
+  const pct=rev.length?Math.round(app.length/rev.length*100):null;
+  document.getElementById('k-approval').textContent=pct!==null?pct+'%':'—';
+  document.getElementById('k-approval-d').textContent=rev.length?`${rev.length}건 중 ${app.length}건 승인`:'데이터 없음';
+
+  // 평균 검수 소요일 (요청일~상태변경일)
+  const withDays=mn.filter(e=>e.review_requested_at&&(e.review_status==='approved'||e.review_status==='revision')&&e.updated_at);
+  if(withDays.length){
+    const avg=withDays.reduce((s,e)=>{
+      const diff=(new Date(e.updated_at)-new Date(e.review_requested_at))/(1000*60*60*24);
+      return s+Math.max(0,diff);
+    },0)/withDays.length;
+    document.getElementById('k-avg-days').textContent=avg<1?'<1일':Math.round(avg)+'일';
+    document.getElementById('k-avg-days-d').textContent=`${withDays.length}건 평균`;
+  } else {
+    document.getElementById('k-avg-days').textContent='—';
+    document.getElementById('k-avg-days-d').textContent='데이터 없음';
+  }
+
+  // 라이브 완료율
+  const approvedAll=mn.filter(e=>e.review_status==='approved');
+  const liveAll=mn.filter(e=>e.is_live);
+  const liveRate=approvedAll.length?Math.round(liveAll.length/approvedAll.length*100):null;
+  document.getElementById('k-live-rate').textContent=liveRate!==null?liveRate+'%':'—';
+  document.getElementById('k-live-rate-d').textContent=approvedAll.length?`승인 ${approvedAll.length}건 중 ${liveAll.length}건`:'데이터 없음';
+}
+
+function renderToday(){
+  const el=document.getElementById('today-list');
+  const d=new Date();
+  document.getElementById('today-date').textContent=`${d.getMonth()+1}월 ${d.getDate()}일`;
+  const tod=events.filter(e=>e.start_date===todayDs()).sort((a,b)=>(a.post_time||'99').localeCompare(b.post_time||'99'));
+  if(!tod.length){el.innerHTML='<div class="card-empty">오늘 예정 소재 없음</div>';return;}
+  el.innerHTML='';
+  tod.forEach(ev=>{
+    let dot='#d1d5db',badge='';
+    if(ev.is_live){dot='#16a34a';badge='<span class="badge badge-green">📡 라이브</span>';}
+    else if(ev.review_status==='approved'){dot='#16a34a';badge='<span class="badge badge-green">✅ 승인</span>';}
+    else if(ev.review_status==='revision'){dot='#dc2626';badge='<span class="badge badge-red">🔄 수정요청</span>';}
+    else if(ev.review_requested){dot='#F59E0B';badge='<span class="badge badge-yellow">🔔 검수중</span>';}
+    else{badge='<span class="badge badge-gray">미검수</span>';}
+    const plats=(ev.platform||'').split(',').map(p=>p.trim()).filter(Boolean).join(', ')||'—';
+    const region=COMMON.includes(ev.region)?'전권역':(ev.region||'').toUpperCase();
+    const item=document.createElement('div');
+    item.className='today-item';
+    item.innerHTML=`
+      <div class="today-dot" style="background:${dot}"></div>
+      <div class="today-time">${fmtTime(ev.post_time)}</div>
+      <div class="today-info">
+        <div class="today-name">${ev.name||'(제목 없음)'}</div>
+        <div class="today-meta">${region} · ${plats} <span style="margin-left:auto;display:flex;align-items:center;gap:5px">${badge}<a href="${ticketLink(ev.id)}" target="_blank" class="feed-link">🔗</a></span></div>
+      </div>`;
+    el.appendChild(item);
+  });
+}
+
+function renderRegionBars(){
+  const el=document.getElementById('region-bars');
+  const mn=thisMonth(events);
+  const cnt={kr:0,jp:0,en:0,tw:0};
+  mn.forEach(ev=>{
+    if(COMMON.includes(ev.region)){cnt.kr++;cnt.jp++;cnt.en++;if(ev.note_tw||ev.media_url_tw)cnt.tw++;}
+    else if(cnt[ev.region]!==undefined)cnt[ev.region]++;
+  });
+  const max=Math.max(...Object.values(cnt),1);
+  el.innerHTML='';
+  const wrap=document.createElement('div');wrap.className='bar-wrap';
+  Object.entries(cnt).forEach(([k,v])=>{
+    const item=document.createElement('div');item.className='bar-item';
+    item.innerHTML=`<div class="bar-label" style="color:${REGION_COLORS[k]}">${k.toUpperCase()}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/max*100)}%;background:${REGION_COLORS[k]}"></div></div>
+      <div class="bar-count">${v}</div>`;
+    wrap.appendChild(item);
+  });
+  el.appendChild(wrap);
+}
+
+function renderRegionApproval(){
+  const el=document.getElementById('region-approval');
+  const mn=thisMonth(events);
+  const regions=['kr','jp','en','tw'];
+  el.innerHTML='';
+  const wrap=document.createElement('div');wrap.className='gauge-wrap';
+  regions.forEach(r=>{
+    // 전권역 공통: review_status_kr 등 사용, 단독: review_status
+    const relevant=mn.filter(e=>{
+      if(COMMON.includes(e.region)) return true;
+      return e.region===r;
+    });
+    let approved=0,revision=0;
+    relevant.forEach(e=>{
+      const s=COMMON.includes(e.region)?e[`review_status_${r}`]:e.review_status;
+      if(s==='approved')approved++;
+      else if(s==='revision')revision++;
+    });
+    const total=approved+revision;
+    const pct=total?Math.round(approved/total*100):null;
+    const item=document.createElement('div');item.className='gauge-item';
+    item.innerHTML=`
+      <div class="gauge-label" style="color:${REGION_COLORS[r]}">${r.toUpperCase()}</div>
+      <div class="gauge-track">
+        <div class="gauge-approved" style="width:${pct!==null?pct:0}%"></div>
+        <div class="gauge-revision" style="width:${pct!==null?100-pct:0}%"></div>
+      </div>
+      <div class="gauge-pct">${pct!==null?pct+'%':'—'}</div>`;
+    wrap.appendChild(item);
+  });
+  el.appendChild(wrap);
+}
+
+function renderPlatforms(){
+  const el=document.getElementById('platform-list');
+  const mn=thisMonth(events);
+  const cnt={};
+  mn.forEach(ev=>(ev.platform||'').split(',').forEach(p=>{const t=p.trim();if(t)cnt[t]=(cnt[t]||0)+1;}));
+  const total=Object.values(cnt).reduce((a,b)=>a+b,0)||1;
+  const sorted=Object.entries(cnt).sort((a,b)=>b[1]-a[1]);
+  if(!sorted.length){el.innerHTML='<div class="card-empty">데이터 없음</div>';return;}
+  el.innerHTML='';
+  sorted.forEach(([name,count])=>{
+    const pct=Math.round(count/total*100);
+    const color=PLATFORM_COLORS[name]||'#6b7280';
+    const item=document.createElement('div');item.className='plat-item';
+    item.innerHTML=`<div class="plat-dot" style="background:${color}"></div>
+      <div class="plat-name">${name==='YoutubeCommunity'?'YTC':name}</div>
+      <div class="plat-bar-wrap"><div class="plat-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      <div class="plat-count">${count}</div><div class="plat-pct">${pct}%</div>`;
+    el.appendChild(item);
+  });
+}
+
+function renderStatusDist(){
+  const el=document.getElementById('status-dist');
+  const mn=thisMonth(events);
+  const groups=[
+    {label:'라이브 완료',count:mn.filter(e=>e.is_live).length,color:'#16a34a',icon:'📡'},
+    {label:'승인됨',count:mn.filter(e=>e.review_status==='approved'&&!e.is_live).length,color:'#22c55e',icon:'✅'},
+    {label:'수정 요청',count:mn.filter(e=>e.review_status==='revision').length,color:'#dc2626',icon:'🔄'},
+    {label:'검수 요청 중',count:mn.filter(e=>e.review_requested&&!e.review_status).length,color:'#F59E0B',icon:'🔔'},
+    {label:'미검수',count:mn.filter(e=>!e.review_requested&&!e.review_status&&!e.is_live).length,color:'#9ca3af',icon:'📝'},
+  ];
+  const max=Math.max(...groups.map(g=>g.count),1);
+  el.innerHTML='';
+  const wrap=document.createElement('div');wrap.className='bar-wrap';
+  groups.forEach(g=>{
+    const item=document.createElement('div');item.className='bar-item';
+    item.innerHTML=`<div style="font-size:11px;color:var(--text-2);min-width:72px;white-space:nowrap">${g.icon} ${g.label}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(g.count/max*100)}%;background:${g.color}"></div></div>
+      <div class="bar-count">${g.count}</div>`;
+    wrap.appendChild(item);
+  });
+  el.appendChild(wrap);
+}
+
+
+
+function renderFeed(){
+  const el=document.getElementById('activity-feed');
+
+  // events 기반 활동 로그 구성
+  // 실제 상태 변화가 있는 소재만, "테스트" 제외
+  const activities=[];
+
+  events.filter(e=>!isTest(e)).forEach(ev=>{
+    const name=ev.name||'(제목 없음)';
+    const link=ticketLink(ev.id);
+
+    if(ev.is_live&&ev.updated_at)
+      activities.push({ts:ev.updated_at,icon:'📡',text:`<b>${name}</b> — 라이브 완료`,link,color:'#dcfce7'});
+    else if(ev.review_status==='approved'&&ev.updated_at)
+      activities.push({ts:ev.updated_at,icon:'✅',text:`<b>${name}</b> — 검수 승인됨`,link,color:'#dcfce7',highlight:true});
+    else if(ev.review_status==='revision'&&ev.updated_at)
+      activities.push({ts:ev.updated_at,icon:'🔄',text:`<b>${name}</b> — 수정 요청됨`,link,color:'#fee2e2'});
+    else if(ev.review_requested&&ev.review_requested_at)
+      activities.push({ts:ev.review_requested_at,icon:'🔔',text:`<b>${name}</b> — 검수 요청됨`,link,color:'#fef9c3'});
+    else if(ev.created_at)
+      activities.push({ts:ev.created_at,icon:'📝',text:`<b>${name}</b> — 소재 등록`,link,color:'#f3f4f6'});
+  });
+
+  // 최신순 정렬, 상위 20개
+  const sorted=activities.sort((a,b)=>new Date(b.ts)-new Date(a.ts)).slice(0,20);
+
+  if(!sorted.length){el.innerHTML='<div class="card-empty">최근 활동 없음</div>';return;}
+
+  el.innerHTML='';
+  sorted.forEach(act=>{
+    const item=document.createElement('div');item.className='feed-item';
+    if(act.highlight) item.style.cssText='background:#f0fdf4;border-radius:8px;margin:-2px -4px;padding:2px 4px';
+    item.innerHTML=`
+      <div class="feed-icon" style="background:${act.color}">${act.icon}</div>
+      <div class="feed-body">
+        <div class="feed-text">${act.text}</div>
+        <div class="feed-meta">
+          <span class="feed-time">${timeAgo(act.ts)}</span>
+          <a href="${act.link}" target="_blank" class="feed-link">🔗 티켓 보기</a>
+        </div>
+      </div>`;
+    el.appendChild(item);
+  });
+}
+
+// 실시간
+function subscribeRealtime(){
+  sb.channel('dashboard')
+    .on('postgres_changes',{event:'*',schema:'public',table:'events'},()=>loadData())
+    .subscribe(s=>{if(s==='SUBSCRIBED') document.getElementById('sync-label').textContent='실시간 연결됨';});
+}
+
+setInterval(()=>{
+  if(lastUpdated) document.getElementById('last-updated').textContent=`· ${timeAgo(lastUpdated.toISOString())} 갱신`;
+},30000);
+
+function exportPDF(){
+  // 인쇄 날짜 표시
+  const now = new Date();
+  const pd = document.getElementById('print-date');
+  if(pd) pd.textContent = `출력일: ${now.getFullYear()}년 ${now.getMonth()+1}월 ${now.getDate()}일 ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  window.print();
+}
+
+loadData();
+subscribeRealtime();
+</script>
+</body>
+</html>
