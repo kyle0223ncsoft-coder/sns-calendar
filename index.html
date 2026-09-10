@@ -18,6 +18,11 @@
   --tw-c:#7B3F00;--tw-bg:#FEF3E2;--tw-border:#F59E0B;
   --bg:#F8F7F4;--surface:#fff;--border:rgba(0,0,0,0.09);
   --text:#1a1a18;--text-2:#6b6b67;--text-3:#9e9d99;
+  color-scheme:light dark;
+}
+[data-theme="dark"]{
+  --bg:#111110;--surface:#1c1c1a;--border:rgba(255,255,255,0.09);
+  --text:#f0ede8;--text-2:#9e9d99;--text-3:#6b6b67;
   --r:10px;--rs:6px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -71,6 +76,43 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
 .spinner-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;height:220px;gap:14px;grid-column:1/-1}
 .spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--text);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── 다크모드 오버라이드 ── */
+[data-theme="dark"] .chip.common{background:#27272a!important;color:#a1a1aa!important;border-color:#3f3f46!important}
+[data-theme="dark"] .sum-chip.common{background:#27272a!important;color:#a1a1aa!important}
+[data-theme="dark"] .day:hover{background:#222220}
+[data-theme="dark"] .day.other{background:#161614}
+[data-theme="dark"] .day.drag-over{background:#1e3a5f!important;outline-color:#378ADD}
+[data-theme="dark"] .dow.sun{color:#f87171}
+[data-theme="dark"] .dow.sat{color:#60a5fa}
+[data-theme="dark"] .day.is-sun .day-num{color:#f87171}
+[data-theme="dark"] .day.is-sat .day-num{color:#60a5fa}
+[data-theme="dark"] .day.is-sun.today .day-num,[data-theme="dark"] .day.is-sat.today .day-num{color:#fff}
+[data-theme="dark"] .btn-del{background:#450a0a;color:#fca5a5;border-color:#7f1d1d}
+[data-theme="dark"] .memo-log-body code{background:#27272a;color:#e5e7eb}
+[data-theme="dark"] .media-type-btn.active[data-type="image"]{border-color:#378ADD;background:#1e3a5f;color:#93c5fd}
+[data-theme="dark"] .media-type-btn.active[data-type="video"]{border-color:#D85A30;background:#431407;color:#fdba74}
+[data-theme="dark"] .x-region-btn{border-color:#3f3f46;background:#27272a;color:#a1a1aa}
+[data-theme="dark"] .x-card{background:#15202b;border-color:#2f3336}
+[data-theme="dark"] .x-handle{color:#8899a6}
+[data-theme="dark"] .x-body{color:#d9d9d9}
+[data-theme="dark"] .x-meta{color:#8899a6}
+[data-theme="dark"] .x-logo{color:#d9d9d9}
+[data-theme="dark"] .modal{background:#1c1c1a;color:var(--text)}
+[data-theme="dark"] .form-input,[data-theme="dark"] .form-textarea,[data-theme="dark"] .form-select{background:#27272a;color:var(--text);border-color:var(--border)}
+[data-theme="dark"] .detail-tab{color:var(--text-3)}
+[data-theme="dark"] .detail-tab.active{color:var(--text)}
+[data-theme="dark"] .review-section{background:#27272a;border-color:#3f3f46}
+[data-theme="dark"] .hdr{background:#161614}
+[data-theme="dark"] .search-panel{background:#1c1c1a}
+[data-theme="dark"] #search-panel{background:#1c1c1a;border-color:var(--border)}
+[data-theme="dark"] #search-results{background:#1c1c1a}
+[data-theme="dark"] .spinner{border-color:rgba(255,255,255,0.1);border-top-color:var(--text)}
+[data-theme="dark"] .patch-popup,[data-theme="dark"] .changelog-modal{background:#1c1c1a}
+[data-theme="dark"] [id^="preview-"]{filter:brightness(.92)}
+[data-theme="dark"] .kst-day-label{opacity:.9}
+[data-theme="dark"] #memo-editor{background:#27272a;color:var(--text)}
+[data-theme="dark"] .memo-log-item{border-color:#3f3f46}
 .spinner-text{font-size:13px;color:var(--text-3)}
 /* grid */
 .cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-radius:var(--r);border:1px solid var(--border);overflow:hidden;position:relative}.dow{background:var(--surface);padding:8px 10px;font-size:11px;font-weight:600;color:var(--text-3);text-align:center;letter-spacing:.5px;text-transform:uppercase;border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
@@ -237,7 +279,7 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
 <header class="hdr">
   <div style="display:flex;align-items:center;gap:10px">
     <div class="hdr-title">Global SNS Calendar</div>
-    <button onclick="openChangelog()" style="padding:3px 9px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);font-size:11px;font-weight:700;cursor:pointer;color:var(--text-2);letter-spacing:-.2px;transition:all .15s" title="업데이트 로그 보기">v1.1</button>
+    <button onclick="openChangelog()" style="padding:3px 9px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);font-size:11px;font-weight:700;cursor:pointer;color:var(--text-2);letter-spacing:-.2px;transition:all .15s" title="업데이트 로그 보기">v1.2</button>
   </div>
   <div class="hdr-right">
     <div class="legend">
@@ -250,9 +292,11 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
     <button onclick="exportBackup()" style="padding:6px 12px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;cursor:pointer;color:var(--text-2)" title="현재 데이터 백업">💾 백업</button>
     <label style="padding:6px 12px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;cursor:pointer;color:var(--text-2)" title="백업 파일로 복원">🔄 복원<input type="file" accept=".json" onchange="importBackup(event)" style="display:none"></label>
     <button onclick="toggleSearch()" id="search-btn" title="소재 검색" style="padding:6px 12px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;cursor:pointer;color:var(--text-2);transition:all .15s">🔍 검색</button>
+    <button id="dark-toggle-btn" onclick="toggleDarkMode()" title="다크모드 전환" style="width:32px;height:32px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0">🌙</button>
     <button class="btn-add" onclick="openAdd()">+ 소재 추가</button>
     <button onclick="promptMyName();renderMyNameBadge();" id="my-name-badge" style="padding:6px 12px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;cursor:pointer;color:var(--text-2)">👤 이름 설정</button>
     <button class="btn-help" onclick="openHelp()">?</button>
+    <button onclick="handleLogout()" style="padding:6px 12px;border-radius:20px;border:1.5px solid rgba(220,38,38,.3);background:transparent;font-size:12px;font-weight:600;cursor:pointer;color:#dc2626;font-family:inherit;transition:all .15s" onmouseenter="this.style.background='#fee2e2'" onmouseleave="this.style.background='transparent'">로그아웃</button>
   </div>
 </header>
 
@@ -292,22 +336,17 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
   <div class="modal" style="max-width:420px;padding:28px 28px 22px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
       <div style="display:flex;align-items:center;gap:10px">
-        <div style="background:#1a1a18;color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px">v1.1</div>
+        <div style="background:#1a1a18;color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px">v1.2</div>
         <div style="font-size:16px;font-weight:700;color:var(--text)">업데이트 안내</div>
       </div>
       <button onclick="closePatchPopup()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-3);line-height:1">×</button>
     </div>
-    <div style="font-size:12px;color:var(--text-3);margin-bottom:16px">2026.07.24</div>
+    <div style="font-size:12px;color:var(--text-3);margin-bottom:16px">2026.09.08</div>
     <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:22px">
       <div style="display:flex;gap:10px;align-items:flex-start">
-        <span style="font-size:16px;flex-shrink:0">✅</span>
-        <div><div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px">권역별 검수 시스템</div>
-        <div style="font-size:12px;color:var(--text-2);line-height:1.6">전 권역 공통 소재의 검수를 KR/JP/EN/TW 권역별로 따로 승인·반려할 수 있어요. 전부 승인 시 전체 승인, 하나라도 반려 시 전체 반려로 처리돼요.</div></div>
-      </div>
-      <div style="display:flex;gap:10px;align-items:flex-start">
-        <span style="font-size:16px;flex-shrink:0">💬</span>
-        <div><div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px">권역별 검수 코멘트</div>
-        <div style="font-size:12px;color:var(--text-2);line-height:1.6">검수자가 권역별로 코멘트를 남길 수 있어요. 마케터 페이지에서 반려된 권역을 클릭하면 해당 코멘트를 확인할 수 있어요.</div></div>
+        <span style="font-size:16px;flex-shrink:0">🔐</span>
+        <div><div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px">로그인 보안 적용</div>
+        <div style="font-size:12px;color:var(--text-2);line-height:1.6">BMW에 계정 로그인이 적용됐어요. 승인된 계정으로만 접근할 수 있어요. 계정 정보는 관리자에게 문의해 주세요.</div></div>
       </div>
     </div>
     <button onclick="closePatchPopup()" style="width:100%;padding:11px;border-radius:8px;background:var(--text);color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">확인</button>
@@ -321,10 +360,24 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
       <div style="font-size:15px;font-weight:700;color:var(--text)">📋 업데이트 로그</div>
       <button onclick="closeChangelog()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-3);line-height:1">×</button>
     </div>
+    <!-- v1.2 -->
+    <div style="margin-bottom:24px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <div style="background:#1a1a18;color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px">v1.2</div>
+        <div style="font-size:12px;color:var(--text-3)">2026.09.08</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:8px;align-items:flex-start;padding:9px 11px;background:var(--bg);border-radius:8px">
+          <span style="font-size:13px;flex-shrink:0">🔐</span>
+          <div><div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px">로그인 보안 적용</div>
+          <div style="font-size:11px;color:var(--text-2);line-height:1.6">승인된 계정으로만 BMW에 접근 가능. 계정별 이메일+비밀번호 로그인 방식.</div></div>
+        </div>
+      </div>
+    </div>
     <!-- v1.1 -->
     <div style="margin-bottom:24px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-        <div style="background:#1a1a18;color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px">v1.1</div>
+        <div style="background:#6b6b67;color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px">v1.1</div>
         <div style="font-size:12px;color:var(--text-3)">2026.07.24</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:8px">
@@ -1135,6 +1188,20 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
     worker: false
   }
 });
+
+// ── 인증 체크 ──
+(async()=>{
+  const {data:{session}} = await sb.auth.getSession();
+  if(!session){ location.href='/login?returnTo=/'; return; }
+  // 로그인 사용자 이름 표시
+  const email = session.user.email||'';
+  const meta = session.user.user_metadata||{};
+  const displayName = meta.name || email.split('@')[0];
+  const badge = document.getElementById('my-name-badge');
+  if(badge && !localStorage.getItem('myName')){
+    badge.textContent = '👤 ' + displayName;
+  }
+})();
 
 const REGION_LABELS = { common:'전 권역 공통', game:'전 권역 공통', fun:'전 권역 공통', kr:'KR 단독', jp:'JP 단독', en:'EN 단독', tw:'TW 단독' };
 const REGION_BADGE = {
@@ -3402,6 +3469,32 @@ async function sendSlackNotification(type, ev){
   }
 }
 
+// ── 다크모드 ──
+function toggleDarkMode(){
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const next = isDark ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  document.getElementById('dark-toggle-btn').textContent = next === 'dark' ? '☀️' : '🌙';
+  localStorage.setItem('bmw-theme', next);
+}
+
+function initDarkMode(){
+  const saved = localStorage.getItem('bmw-theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const theme = saved || (prefersDark ? 'dark' : 'light');
+  if(theme === 'dark'){
+    document.documentElement.setAttribute('data-theme', 'dark');
+    const btn = document.getElementById('dark-toggle-btn');
+    if(btn) btn.textContent = '☀️';
+  }
+}
+initDarkMode();
+
+async function handleLogout(){
+  await sb.auth.signOut();
+  location.href = '/login?returnTo=/';
+}
+
 function subscribeRealtime(){
   const ch = sb.channel('events-changes');
   ch.on('postgres_changes',{event:'UPDATE',schema:'public',table:'events'},handleRealtimeUpdate)
@@ -3616,7 +3709,7 @@ function handleDeepLink(){
 subscribeRealtime();
 
 // ── 패치노트 ──
-const PATCH_VERSION = 'v1.1';
+const PATCH_VERSION = 'v1.2';
 function closePatchPopup(){
   document.getElementById('patch-popup').classList.remove('open');
   localStorage.setItem('patch_seen_'+PATCH_VERSION,'1');

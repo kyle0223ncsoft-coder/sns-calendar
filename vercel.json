@@ -1,16 +1,8 @@
 {
   "rewrites": [
-    {
-      "source": "/review",
-      "destination": "/review.html"
-    },
-    {
-      "source": "/dashboard",
-      "destination": "/dashboard.html"
-    },
-    {
-      "source": "/api/:path*",
-      "destination": "/api/:path*"
-    }
+    { "source": "/login", "destination": "/login.html" },
+    { "source": "/review", "destination": "/review.html" },
+    { "source": "/dashboard", "destination": "/dashboard.html" },
+    { "source": "/api/:path*", "destination": "/api/:path*" }
   ]
 }

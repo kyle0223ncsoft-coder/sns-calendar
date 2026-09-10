@@ -141,6 +141,7 @@ body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);colo
     <div style="font-size:12px;color:rgba(255,255,255,.8)" id="review-counts"></div>
     <button onclick="promptMyName();renderMyNameBadge();" id="my-name-badge" style="padding:5px 12px;border-radius:20px;border:1.5px solid rgba(255,255,255,.4);background:rgba(255,255,255,.15);font-size:12px;font-weight:600;cursor:pointer;color:#fff">👤 이름 설정</button>
   </div>
+  <button onclick="handleLogout()" style="padding:5px 11px;border-radius:20px;border:1.5px solid rgba(220,38,38,.3);background:transparent;font-size:12px;font-weight:600;cursor:pointer;color:#dc2626;font-family:inherit" onmouseenter="this.style.background='#fee2e2'" onmouseleave="this.style.background='transparent'">로그아웃</button>
 </header>
 
 <!-- 분류 범례 -->
@@ -421,6 +422,12 @@ const SUPABASE_KEY='sb_publishable_qXPGvnM2PyP_-Dv1LKImvw_unm4vuKU';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
   realtime:{params:{eventsPerSecond:10},worker:false}
 });
+
+// ── 인증 체크 ──
+(async()=>{
+  const {data:{session}} = await sb.auth.getSession();
+  if(!session){ location.href='/login?returnTo=/review'; return; }
+})();
 
 const REGION_LABELS={common:'전 권역 공통',game:'전 권역 공통',fun:'전 권역 공통',kr:'KR 단독',jp:'JP 단독',en:'EN 단독',tw:'TW 단독'};
 const REGION_BADGE={
@@ -1827,6 +1834,11 @@ document.addEventListener('keydown',e=>{
   if(e.key!=='Escape') return;
   if(document.getElementById('detail-modal')?.classList.contains('open')) closeDetail();
 });
+
+async function handleLogout(){
+  await sb.auth.signOut();
+  location.href = '/login?returnTo=/review';
+}
 
 subscribeRealtime();
 
